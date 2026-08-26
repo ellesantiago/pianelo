@@ -30,6 +30,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (status === "Working…") return;
     const supabase = createSupabaseBrowserClient();
     if (!supabase) return;
     if (mode === "signup" && !agreed) {
@@ -119,7 +120,8 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700"
+          disabled={status === "Working…"}
+          className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mode === "signup" ? "Create account" : "Log in"}
         </button>

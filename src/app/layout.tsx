@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -22,16 +21,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-white text-neutral-900">
-        {ADSENSE_CLIENT_ID && (
-          <Script
+      {ADSENSE_CLIENT_ID && (
+        <head>
+          <script
             async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
             crossOrigin="anonymous"
-            strategy="beforeInteractive"
           />
-        )}
-
+        </head>
+      )}
+      <body className="flex min-h-full flex-col bg-white text-neutral-900">
         <header className="border-b border-neutral-200">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
             <Link href="/" className="text-base font-semibold tracking-tight">

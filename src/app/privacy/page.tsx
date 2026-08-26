@@ -41,6 +41,24 @@ export default function PrivacyPage() {
       <h2 className="text-lg font-semibold text-neutral-900">Third parties</h2>
       <p>Supabase (database, auth), PayMongo (payments), and Google AdSense (ads, shown only to users who haven&apos;t purchased full access).</p>
 
+      <h2 className="text-lg font-semibold text-neutral-900">Cookies &amp; advertising</h2>
+      <p>
+        We use a strictly necessary cookie to keep you signed in and to enforce one-device-at-a-time
+        login. For users who haven&apos;t purchased full access, Google AdSense and its partners use
+        cookies to serve and personalize ads and measure their performance. Google&apos;s use of
+        advertising cookies enables it and its partners to serve ads based on your visits to this and
+        other sites. You can learn more, and opt out of personalized advertising, at{" "}
+        <a
+          href="https://policies.google.com/technologies/ads"
+          className="underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Google&apos;s Ads Settings
+        </a>
+        . Purchasing full access removes ads, and their cookies, from your experience going forward.
+      </p>
+
       <h2 className="text-lg font-semibold text-neutral-900">Your rights</h2>
       <p>
         You may request access, correction, or deletion of your account data by contacting{" "}

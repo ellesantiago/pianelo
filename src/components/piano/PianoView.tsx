@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FullKeyboardKey, OctaveMapping } from "@/lib/keyboard/mapping";
 
 const WHITE_KEY_WIDTH = 32; // px
@@ -47,6 +47,7 @@ export function PianoView({
 }: PianoViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Track each key's index among the white keys (needed to position black
   // keys relative to the white key immediately before them) and total width.
@@ -73,6 +74,31 @@ export function PianoView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [octave]);
 
+  // Fullscreen is mobile-only (see the button's `sm:hidden`), so lock
+  // landscape orientation the moment fullscreen actually engages -- most
+  // browsers only allow an orientation lock while the document is
+  // fullscreen. Not supported on iOS Safari; failing silently there just
+  // leaves the device in whatever orientation the user is already holding.
+  // lock/unlock are omitted from TS's ScreenOrientation type despite being
+  // implemented in every Chromium-based browser -- hence the cast.
+  useEffect(() => {
+    const orientation = screen.orientation as ScreenOrientation & {
+      lock?: (orientation: string) => Promise<void>;
+      unlock?: () => void;
+    };
+    const onFullscreenChange = () => {
+      const active = document.fullscreenElement === containerRef.current;
+      setIsFullscreen(active);
+      if (active) {
+        orientation.lock?.("landscape").catch(() => {});
+      } else {
+        orientation.unlock?.();
+      }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
   const handleFullscreen = () => {
     if (!containerRef.current) return;
     if (document.fullscreenElement) {
@@ -85,7 +111,19 @@ export function PianoView({
   return (
     <div
       ref={containerRef}
-      className={`relative left-1/2 right-1/2 -mx-[50vw] w-screen max-w-[1400px] flex flex-col gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:p-6 ${className ?? ""}`}
+      className={`${
+        // The `left-1/2 -mx-[50vw]` full-bleed trick only works in normal
+        // document flow. requestFullscreen() forces `position: fixed` (via
+        // the browser's own :fullscreen UA styles), which breaks that trick
+        // -- left:50% + the negative margin resolve against the viewport
+        // instead of this element's static position, leaving the box
+        // pinned to the left edge at its old capped width with blank space
+        // filling the rest of the screen. Fullscreen doesn't need the
+        // trick at all: the UA styles already size it to the viewport.
+        isFullscreen
+          ? "fixed inset-0 z-50 h-dvh w-dvw max-w-none"
+          : "relative left-1/2 right-1/2 -mx-[50vw] w-screen max-w-[1400px]"
+      } flex flex-col gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:p-6 ${className ?? ""}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-neutral-700">
         <div className="flex items-center gap-2">
@@ -140,7 +178,7 @@ export function PianoView({
         <button
           type="button"
           onClick={handleFullscreen}
-          className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 font-medium hover:bg-neutral-100"
+          className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 font-medium hover:bg-neutral-100 sm:hidden"
         >
           Fullscreen
         </button>
@@ -148,8 +186,8 @@ export function PianoView({
 
       <div ref={scrollRef} className="overflow-x-auto overflow-y-hidden pb-1">
         <div
-          className="relative h-40 select-none sm:h-48"
-          style={{ width: trackWidth, minWidth: "100%" }}
+          className={`relative h-40 select-none sm:h-48 ${isFullscreen ? "mx-auto" : ""}`}
+          style={{ width: trackWidth, minWidth: isFullscreen ? undefined : "100%" }}
         >
           {positionedKeys
             .filter((k) => !k.isBlack)

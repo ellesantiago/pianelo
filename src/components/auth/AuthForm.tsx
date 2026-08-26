@@ -53,6 +53,15 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
     }
 
     if (mode === "signup" && !data.session) {
+      // Supabase's signUp() never errors for an email that's already
+      // registered -- it silently returns a user with no identities
+      // instead, to avoid leaking which emails have accounts. That's the
+      // only way to tell the two cases apart here.
+      if (data.user && data.user.identities?.length === 0) {
+        setStatus("An account with this email already exists. Try logging in instead.");
+        return;
+      }
+
       // Email confirmation is required -- there's no session yet, so there's
       // nothing to register as an active device until the user clicks the
       // confirmation link (handled by /auth/callback, which registers the

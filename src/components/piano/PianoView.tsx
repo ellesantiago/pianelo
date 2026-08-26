@@ -159,7 +159,7 @@ export function PianoView({
                 <PianoKey
                   key={k.note}
                   note={k.note}
-                  label={qwertyLabel ?? k.pitchClass}
+                  label={qwertyLabel ?? ""}
                   isMapped={Boolean(qwertyLabel)}
                   isBlack={false}
                   isActive={activeNotes.has(k.note)}
@@ -236,7 +236,7 @@ function PianoKey({ note, label, isBlack, isMapped, isActive, style, onPress, on
         "absolute top-0 flex flex-col items-center justify-end gap-1 rounded-b-lg border pb-2 text-xs font-semibold transition-colors duration-75",
         isBlack ? "z-10 h-24 sm:h-28" : "h-40 sm:h-48",
         colorClasses,
-        isMapped && !isActive && "ring-2 ring-inset ring-sky-400/40",
+        !isMapped && !isActive && "opacity-50",
       ]
         .filter(Boolean)
         .join(" ")}

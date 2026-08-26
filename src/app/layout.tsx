@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { SessionWatcher } from "@/components/auth/SessionWatcher";
 import { AdSlot } from "@/components/ads/AdSlot";
 
 // Using the system font stack rather than next/font/google -- this keeps
@@ -31,6 +32,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </head>
       )}
       <body className="flex min-h-full flex-col bg-white text-neutral-900">
+        {user && <SessionWatcher />}
         <header className="border-b border-neutral-200">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
             <Link href="/" className="text-base font-semibold tracking-tight">

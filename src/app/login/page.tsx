@@ -19,6 +19,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           allows one device at a time.
         </p>
       )}
+      {reason === "password-updated" && (
+        <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-center text-sm text-emerald-800">
+          Your password has been updated. Log in with your new password.
+        </p>
+      )}
       <AuthForm mode="login" />
       <p className="text-center text-sm text-neutral-500">
         Don&apos;t have an account?{" "}

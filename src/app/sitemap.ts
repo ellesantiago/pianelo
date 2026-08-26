@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://pianelo.vercel.app";
+const SITE_URL = "https://pianelo.online";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = ["", "/pricing", "/recordings", "/login", "/signup", "/terms", "/privacy"];

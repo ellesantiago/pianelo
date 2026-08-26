@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -87,6 +88,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

@@ -246,3 +246,30 @@ export function noteToLetterLabel(token: string): string {
   const pitchClass = normalizePitchClass(`${letter.toUpperCase()}${accidental ?? ""}`);
   return LETTER_REFERENCE_MAPPING.noteToKey[`${pitchClass}${octave}`] ?? token;
 }
+
+/** Absolute semitone count from C0 -- unlike KEY_LAYOUT's semitone offsets
+ * (relative to a chosen base octave), this orders every note on one scale
+ * regardless of octave, so it can be compared against a fixed pivot. */
+function absoluteSemitone(pitchClass: string, octave: number): number {
+  return octave * 12 + NOTE_NAMES.indexOf(pitchClass as (typeof NOTE_NAMES)[number]);
+}
+
+// A4 -- the same left/right pivot the physical keyboard already uses (see
+// the KEY_LAYOUT comment above: base octave's C-G is the left hand's A S D
+// F G, A-B and everything above is the right hand's H J K and beyond).
+const LEFT_RIGHT_PIVOT = absoluteSemitone("A", DEFAULT_BASE_OCTAVE);
+
+/**
+ * Whether a letter-notes token falls on the keyboard's left-hand side (C4-G4
+ * and below) rather than the right (A4 and above) -- for splitting a beat's
+ * simultaneous notes into a two-hand display. A token with no parseable
+ * octave has no pitch to compare, so it defaults to the left column.
+ */
+export function isLeftHandNote(token: string): boolean {
+  const match = FULL_NOTE_PATTERN.exec(token.trim());
+  if (!match) return true;
+  const [, letter, accidental, octaveStr] = match;
+  const pitchClass = normalizePitchClass(`${letter.toUpperCase()}${accidental ?? ""}`);
+  const octave = Number.parseInt(octaveStr, 10);
+  return absoluteSemitone(pitchClass, octave) < LEFT_RIGHT_PIVOT;
+}

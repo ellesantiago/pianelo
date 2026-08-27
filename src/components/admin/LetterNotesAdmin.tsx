@@ -1,26 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LetterNote } from "@/types/letterNotes";
+import { notesToRows, rowsToNotes, type NoteRow } from "@/lib/letterNotes/grid";
+import { DEFAULT_BASE_OCTAVE, MAX_OCTAVE, MIN_OCTAVE } from "@/lib/keyboard/mapping";
 
 interface LetterNotesAdminProps {
   initial: LetterNote[];
 }
 
+type Row = NoteRow & { id: string };
+const emptyRow = (): Row => ({ id: crypto.randomUUID(), left: "", right: "" });
+const toRows = (notes: string): Row[] =>
+  notesToRows(notes).map((row) => ({ id: crypto.randomUUID(), ...row }));
+
 /** Admin create/edit/delete UI for letter-notes songs, backed by /api/admin/letter-notes. */
 export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
   const [items, setItems] = useState<LetterNote[]>(initial);
   const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
+  const [octave, setOctave] = useState(DEFAULT_BASE_OCTAVE);
+  const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editNotes, setEditNotes] = useState("");
+  const [editOctave, setEditOctave] = useState(DEFAULT_BASE_OCTAVE);
+  const [editRows, setEditRows] = useState<Row[]>([]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const notes = rowsToNotes(rows, octave);
+    if (notes.trim().length === 0) {
+      setError("Add at least one note.");
+      return;
+    }
     setCreating(true);
     try {
       const res = await fetch("/api/admin/letter-notes", {
@@ -32,7 +46,8 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
       if (!res.ok) throw new Error(body.error ?? "Failed to create.");
       setItems((prev) => [...prev, body.letterNotes].sort((a, b) => a.title.localeCompare(b.title)));
       setTitle("");
-      setNotes("");
+      setOctave(DEFAULT_BASE_OCTAVE);
+      setRows([emptyRow()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create.");
     } finally {
@@ -43,16 +58,22 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
   const startEdit = (item: LetterNote) => {
     setEditingId(item.id);
     setEditTitle(item.title);
-    setEditNotes(item.notes);
+    setEditOctave(DEFAULT_BASE_OCTAVE);
+    setEditRows(toRows(item.notes));
   };
 
   const saveEdit = async (id: string) => {
     setError(null);
+    const notes = rowsToNotes(editRows, editOctave);
+    if (notes.trim().length === 0) {
+      setError("Add at least one note.");
+      return;
+    }
     try {
       const res = await fetch(`/api/admin/letter-notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editTitle, notes: editNotes }),
+        body: JSON.stringify({ title: editTitle, notes }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed to update.");
@@ -86,19 +107,7 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
           placeholder="Title"
           className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
         />
-        <textarea
-          required
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notes, e.g. C4 D4 E4 [D4 F4 A4] E4"
-          rows={3}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-        />
-        <p className="text-xs text-neutral-500">
-          Space-separated notes. Wrap notes in brackets to make them a chord (played together) —
-          e.g. <code className="rounded bg-neutral-100 px-1">[D4 F4 A4]</code>. Chord notes need an
-          octave (C4, not just C); single notes outside brackets don&apos;t.
-        </p>
+        <NotesGrid rows={rows} onChange={setRows} octave={octave} onOctaveChange={setOctave} />
         <button
           type="submit"
           disabled={creating}
@@ -122,11 +131,11 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
                 onChange={(e) => setEditTitle(e.target.value)}
                 className="w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm"
               />
-              <textarea
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                rows={2}
-                className="w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm"
+              <NotesGrid
+                rows={editRows}
+                onChange={setEditRows}
+                octave={editOctave}
+                onOctaveChange={setEditOctave}
               />
               <div className="flex gap-3 text-xs">
                 <button
@@ -171,6 +180,146 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
           )
         )}
       </ul>
+    </div>
+  );
+}
+
+const OCTAVE_OPTIONS = Array.from(
+  { length: MAX_OCTAVE - MIN_OCTAVE + 1 },
+  (_, i) => MIN_OCTAVE + i
+);
+
+/**
+ * Notebook-style note entry: one row per beat, a left-hand column and a
+ * right-hand column -- type a row's notes into whichever column(s) play it,
+ * space-separated if that hand plays more than one at once, and leave the
+ * other column blank for a one-handed beat. Mirrors LetterNotesViewer's own
+ * two-column layout so what's built here is exactly what players will see.
+ *
+ * `octave` is the song's default: a note typed without a digit (e.g. "C")
+ * is built as that octave (e.g. "C4") -- type a digit on a note to pick a
+ * different octave for just that one instead.
+ */
+function NotesGrid({
+  rows,
+  onChange,
+  octave,
+  onOctaveChange,
+}: {
+  rows: Row[];
+  onChange: (rows: Row[]) => void;
+  octave: number;
+  onOctaveChange: (octave: number) => void;
+}) {
+  const inputRefs = useRef(new Map<string, HTMLInputElement>());
+  const focusRowId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (focusRowId.current == null) return;
+    inputRefs.current.get(`${focusRowId.current}-left`)?.focus();
+    focusRowId.current = null;
+  }, [rows]);
+
+  const setRow = (id: string, patch: Partial<NoteRow>) => {
+    onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  };
+
+  const addRowAfter = (index: number) => {
+    const row = emptyRow();
+    const next = [...rows];
+    next.splice(index + 1, 0, row);
+    focusRowId.current = row.id;
+    onChange(next);
+  };
+
+  const removeRow = (id: string) => {
+    onChange(rows.filter((row) => row.id !== id));
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+      <div className="flex items-center justify-end gap-3">
+        <label className="flex items-center gap-2 text-xs text-neutral-600">
+          Octave
+          <select
+            value={octave}
+            onChange={(e) => onOctaveChange(Number(e.target.value))}
+            className="rounded-md border border-neutral-300 bg-white px-1.5 py-1 text-xs font-semibold focus:outline-none"
+          >
+            {OCTAVE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex justify-center gap-8 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <span>Left hand</span>
+        <span>Right hand</span>
+      </div>
+      <div className="space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={row.id} className="flex items-center gap-2">
+            <span className="w-4 shrink-0 text-right text-[10px] text-neutral-400">{i + 1}</span>
+            <input
+              ref={(el) => {
+                if (el) inputRefs.current.set(`${row.id}-left`, el);
+                else inputRefs.current.delete(`${row.id}-left`);
+              }}
+              value={row.left}
+              onChange={(e) => setRow(row.id, { left: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addRowAfter(i);
+                }
+              }}
+              placeholder="—"
+              className="min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-right text-sm font-bold focus:outline-none focus:border-neutral-500"
+            />
+            <div className="h-5 w-px shrink-0 bg-neutral-200" />
+            <input
+              ref={(el) => {
+                if (el) inputRefs.current.set(`${row.id}-right`, el);
+                else inputRefs.current.delete(`${row.id}-right`);
+              }}
+              value={row.right}
+              onChange={(e) => setRow(row.id, { right: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addRowAfter(i);
+                }
+              }}
+              placeholder="—"
+              className="min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-left text-sm font-bold focus:outline-none focus:border-neutral-500"
+            />
+            <button
+              type="button"
+              onClick={() => removeRow(row.id)}
+              aria-label="Remove row"
+              className="shrink-0 px-1 text-neutral-400 hover:text-red-500"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => addRowAfter(rows.length - 1)}
+        className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs font-medium hover:bg-neutral-100"
+      >
+        + Add row
+      </button>
+      <p className="text-xs text-neutral-500">
+        One row per beat. A note typed without a number uses the Octave above (e.g. typing just{" "}
+        <code className="rounded bg-neutral-100 px-1">C</code> becomes{" "}
+        <code className="rounded bg-neutral-100 px-1">C{octave}</code>) — type a number on a note
+        (e.g. <code className="rounded bg-neutral-100 px-1">C3</code>) to give just that one a
+        different octave. Press Enter in a cell to add the next row.
+      </p>
     </div>
   );
 }

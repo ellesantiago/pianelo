@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseBeats, type Beat } from "@/lib/letterNotes/parseBeats";
-import { noteToLetterLabel } from "@/lib/keyboard/mapping";
+import { isLeftHandNote, noteToLetterLabel } from "@/lib/keyboard/mapping";
 
 interface LetterNotesViewerProps {
   title: string;
@@ -23,12 +23,14 @@ const SPEED_PX_PER_SEC: Record<Speed, number> = {
 };
 const SPEED_OPTIONS: Speed[] = ["slow", "medium", "fast"];
 
-// Fixed regardless of chord size, so the scroll offset maps to a slot index
+// Fixed regardless of chord size, so the scroll offset maps to a row index
 // by pure arithmetic (no DOM measurement needed to find "what's currently
-// at the playhead").
-const SLOT_WIDTH = 56;
-const SLOT_GAP = 8;
-const SLOT_STRIDE = SLOT_WIDTH + SLOT_GAP;
+// at the playhead"). Row width is left flexible -- it's the height (the
+// scroll axis) that has to stay constant, not the two hand-columns' width.
+const ROW_HEIGHT = 48;
+const ROW_GAP = 8;
+const ROW_STRIDE = ROW_HEIGHT + ROW_GAP;
+const VIEWPORT_HEIGHT = 5 * ROW_STRIDE - ROW_GAP;
 
 /**
  * Visual-only reading aid: scrolls the song's note letters from start to end
@@ -57,17 +59,17 @@ export function LetterNotesViewer({ title, notes }: LetterNotesViewerProps) {
     speedRef.current = speed;
   }, [speed]);
 
-  const trackWidth = () => slotsRef.current.length * SLOT_STRIDE - SLOT_GAP;
+  const trackHeight = () => slotsRef.current.length * ROW_STRIDE - ROW_GAP;
 
   const maxScroll = () => {
     const viewport = viewportRef.current;
     if (!viewport) return 0;
-    return Math.max(0, trackWidth() - viewport.clientWidth);
+    return Math.max(0, trackHeight() - viewport.clientHeight);
   };
 
   const applyPosition = () => {
     if (trackRef.current) {
-      trackRef.current.style.transform = `translateX(${-positionRef.current}px)`;
+      trackRef.current.style.transform = `translateY(${-positionRef.current}px)`;
     }
   };
 
@@ -180,10 +182,15 @@ export function LetterNotesViewer({ title, notes }: LetterNotesViewerProps) {
         </div>
       </div>
 
-      <div ref={viewportRef} className="overflow-hidden">
-        <div ref={trackRef} className="flex" style={{ gap: SLOT_GAP }}>
+      <div className="flex justify-center gap-8 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <span>Left hand</span>
+        <span>Right hand</span>
+      </div>
+
+      <div ref={viewportRef} className="overflow-hidden" style={{ height: VIEWPORT_HEIGHT }}>
+        <div ref={trackRef} className="flex flex-col" style={{ gap: ROW_GAP }}>
           {slots.map((slot, i) => (
-            <SlotChip key={i} beat={slot} format={format} />
+            <BeatRow key={i} beat={slot} format={format} />
           ))}
         </div>
       </div>
@@ -191,20 +198,58 @@ export function LetterNotesViewer({ title, notes }: LetterNotesViewerProps) {
   );
 }
 
-function SlotChip({ beat, format }: { beat: Beat; format: Format }) {
-  const isChord = beat.notes.length > 1;
-  const labels = format === "cde" ? beat.notes : beat.notes.map(noteToLetterLabel);
+// Splits one beat's simultaneous notes across the two hand columns, so a
+// beat that needs both hands at once shows both side by side in the same
+// row, and a beat only one hand plays leaves the other column blank.
+function splitByHand(notes: string[]): { left: string[]; right: string[] } {
+  const left: string[] = [];
+  const right: string[] = [];
+  for (const note of notes) {
+    (isLeftHandNote(note) ? left : right).push(note);
+  }
+  return { left, right };
+}
+
+function BeatRow({ beat, format }: { beat: Beat; format: Format }) {
+  const { left, right } = splitByHand(beat.notes);
+  const label = (handNotes: string[]) =>
+    (format === "cde" ? handNotes : handNotes.map(noteToLetterLabel)).join(" ");
+
+  return (
+    <div style={{ height: ROW_HEIGHT }} className="flex shrink-0 items-stretch gap-3">
+      <HandCell notes={left} label={label(left)} isChord={left.length > 1} align="end" />
+      <div className="w-px shrink-0 bg-neutral-200" />
+      <HandCell notes={right} label={label(right)} isChord={right.length > 1} align="start" />
+    </div>
+  );
+}
+
+function HandCell({
+  notes,
+  label,
+  isChord,
+  align,
+}: {
+  notes: string[];
+  label: string;
+  isChord: boolean;
+  align: "start" | "end";
+}) {
+  if (notes.length === 0) {
+    return <div className="flex-1" />;
+  }
 
   return (
     <div
-      style={{ width: SLOT_WIDTH }}
-      className={`flex h-10 shrink-0 items-center justify-center rounded-md border px-1 font-bold ${
+      className={`flex flex-1 items-center rounded-md border px-2 font-bold ${
+        align === "end" ? "justify-end" : "justify-start"
+      } ${
         isChord
           ? "border-amber-400 bg-amber-50 text-xs text-amber-900"
           : "border-neutral-300 bg-white text-sm"
       }`}
     >
-      <span className="truncate">{labels.join("+")}</span>
+      <span className="truncate">{label}</span>
     </div>
   );
 }

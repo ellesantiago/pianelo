@@ -30,6 +30,14 @@ Create a **new** Supabase project (do not reuse another project's database).
 4. Auth → Providers: email/password should already be enabled by default.
    Decide whether to require email confirmation (Auth → Settings) — either
    works with this app.
+5. Auth → URL Configuration: set **Site URL** to your app's origin (e.g.
+   `https://your-domain.com`, or `http://localhost:3000` for local dev), and
+   add `<origin>/auth/callback**` to **Redirect URLs** (the trailing `**`
+   wildcard matters — the forgot-password flow redirects to
+   `/auth/callback?next=/reset-password`, a query string that won't match an
+   entry without it). If this is missing, Supabase silently redirects users
+   to the Site URL instead of erroring, which shows up as "the reset-password
+   link just takes me to the home page."
 
 ### 2. PayMongo
 

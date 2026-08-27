@@ -44,7 +44,15 @@ export async function proxy(request: NextRequest) {
   // user out of the very request that logs them in.
   const isSessionRegisterRoute = request.nextUrl.pathname.startsWith("/api/session/register");
 
-  if (user && !isSessionRegisterRoute) {
+  // Exempt /auth/callback: a password-recovery (or email-confirmation) link
+  // click may land in a browser that still holds an unrelated, older session
+  // cookie. That cookie has nothing to do with the recovery code this
+  // request is about to exchange, so checking it here can bounce a
+  // legitimate recovery attempt to /login before it ever reaches the page
+  // that lets the user set a new password.
+  const isAuthCallbackRoute = request.nextUrl.pathname.startsWith("/auth/callback");
+
+  if (user && !isSessionRegisterRoute && !isAuthCallbackRoute) {
     const cookieToken = request.cookies.get(SESSION_COOKIE)?.value;
     const valid = await isSessionValid(user.id, cookieToken);
 

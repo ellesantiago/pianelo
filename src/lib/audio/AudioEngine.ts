@@ -18,9 +18,44 @@ interface Voice {
 }
 
 const ATTACK_SECONDS = 0.008;
-const DECAY_SECONDS = 0.25;
+// Exponential approach from the attack peak down to SUSTAIN_LEVEL, replacing
+// a fixed-length linear ramp -- a linear gain ramp is perceived as an
+// unnatural decay shape since loudness is roughly logarithmic.
+const DECAY_TIME_CONSTANT = 0.12;
 const SUSTAIN_LEVEL = 0.35;
-const RELEASE_SECONDS = 0.35;
+// A real piano string has no flat "sustain" stage -- it keeps decaying the
+// entire time a key is held, just slowly. This continues the fade toward
+// silence long after the initial decay settles, instead of holding flat.
+const SUSTAIN_DECAY_START_SECONDS = 0.5;
+const SUSTAIN_DECAY_TIME_CONSTANT = 4;
+// Exponential release curve (~6 time constants to near-silence) instead of a
+// fixed 0.35s linear ramp to zero.
+const RELEASE_TIME_CONSTANT = 0.12;
+// Still fast enough not to smear repeated/trilled notes, but smoother than a
+// hard 20ms linear cutoff, which reads as an abrupt, resonance-less chop.
+const RETRIGGER_RELEASE_TIME_CONSTANT = 0.02;
+const RELEASE_STOP_TIME_CONSTANTS = 6;
+
+// Slight stretch of the upper partials, like a real piano string's
+// inharmonicity, instead of an exact (and therefore synthetic-sounding)
+// harmonic stack.
+const INHARMONICITY = 0.0004;
+// Subtle unison detuning on the fundamental, like a piano's multiple strings
+// per note beating gently against each other.
+const DETUNE_CENTS = 4;
+
+const PARTIALS: { harmonic: number; gain: number }[] = [
+  { harmonic: 1, gain: 0.5 },
+  { harmonic: 2, gain: 0.22 },
+  { harmonic: 3, gain: 0.12 },
+  { harmonic: 4, gain: 0.08 },
+  { harmonic: 5, gain: 0.05 },
+  { harmonic: 6, gain: 0.03 },
+];
+
+function partialFrequency(fundamental: number, harmonic: number): number {
+  return fundamental * harmonic * Math.sqrt(1 + INHARMONICITY * harmonic * harmonic);
+}
 
 export class AudioEngine {
   private ctx: BaseAudioContext | null = null;
@@ -38,10 +73,28 @@ export class AudioEngine {
   constructor(options?: { context?: BaseAudioContext }) {
     if (options?.context) {
       this.ctx = options.context;
-      this.masterGain = options.context.createGain();
-      this.masterGain.gain.value = this.volume;
-      this.masterGain.connect(options.context.destination);
+      this.masterGain = this.buildMasterChain(options.context);
     }
+  }
+
+  /**
+   * Master gain feeding a gentle limiter, so stacked notes/chords compress
+   * instead of clipping at the destination.
+   */
+  private buildMasterChain(ctx: BaseAudioContext): GainNode {
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = this.volume;
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -6;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+
+    masterGain.connect(compressor);
+    compressor.connect(ctx.destination);
+    return masterGain;
   }
 
   /** Lazily creates the AudioContext on first use (required by browser autoplay policy). */
@@ -52,9 +105,7 @@ export class AudioEngine {
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
       this.ctx = new Ctor();
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = this.volume;
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain = this.buildMasterChain(this.ctx);
     }
     if (this.ctx instanceof AudioContext && this.ctx.state === "suspended") {
       void this.ctx.resume();
@@ -73,34 +124,53 @@ export class AudioEngine {
     const freq = noteToFrequency(note);
     const now = atTime ?? ctx.currentTime;
 
+    // Starts bright (the hammer strike) and settles into a warmer tone,
+    // instead of the full harmonic stack ringing at constant brightness for
+    // the note's entire duration.
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.Q.value = 0.7;
+    filter.frequency.setValueAtTime(Math.min(freq * 10, 12000), now);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 3, 1200), now + 0.4);
+
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(1, now + ATTACK_SECONDS);
-    gain.gain.linearRampToValueAtTime(
-      SUSTAIN_LEVEL,
-      now + ATTACK_SECONDS + DECAY_SECONDS
+    gain.gain.setTargetAtTime(SUSTAIN_LEVEL, now + ATTACK_SECONDS, DECAY_TIME_CONSTANT);
+    gain.gain.setTargetAtTime(
+      0,
+      now + ATTACK_SECONDS + SUSTAIN_DECAY_START_SECONDS,
+      SUSTAIN_DECAY_TIME_CONSTANT
     );
+
+    filter.connect(gain);
     gain.connect(masterGain);
 
-    // Two detuned oscillators layered for a slightly richer tone than a bare sine.
-    const osc1 = ctx.createOscillator();
-    osc1.type = "triangle";
-    osc1.frequency.value = freq;
+    // A small harmonic series with slight inharmonicity, rather than a bare
+    // oscillator or two -- a real piano's tone is a dense, decaying stack of
+    // partials, not one or two clean tones.
+    const oscillators: OscillatorNode[] = [];
+    for (const partial of PARTIALS) {
+      const centerFreq = partialFrequency(freq, partial.harmonic);
+      const detunes = partial.harmonic === 1 ? [-DETUNE_CENTS, DETUNE_CENTS] : [0];
+      const gainPerOscillator = partial.gain / detunes.length;
 
-    const osc2 = ctx.createOscillator();
-    osc2.type = "sine";
-    osc2.frequency.value = freq * 2; // octave harmonic
-    const harmonicGain = ctx.createGain();
-    harmonicGain.gain.value = 0.15;
-    osc2.connect(harmonicGain);
-    harmonicGain.connect(gain);
+      for (const cents of detunes) {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = centerFreq * Math.pow(2, cents / 1200);
 
-    osc1.connect(gain);
+        const partialGain = ctx.createGain();
+        partialGain.gain.value = gainPerOscillator;
 
-    osc1.start(now);
-    osc2.start(now);
+        osc.connect(partialGain);
+        partialGain.connect(filter);
+        osc.start(now);
+        oscillators.push(osc);
+      }
+    }
 
-    this.voices.set(note, { oscillators: [osc1, osc2], gain, heldBySustain: false });
+    this.voices.set(note, { oscillators, gain, heldBySustain: false });
   }
 
   releaseNote(note: string, atTime?: number): void {
@@ -119,13 +189,16 @@ export class AudioEngine {
     if (!voice || !this.ctx) return;
 
     const now = atTime ?? this.ctx.currentTime;
-    const releaseTime = immediate ? 0.02 : RELEASE_SECONDS;
+    const timeConstant = immediate
+      ? RETRIGGER_RELEASE_TIME_CONSTANT
+      : RELEASE_TIME_CONSTANT;
     voice.gain.gain.cancelScheduledValues(now);
     voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
-    voice.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
+    voice.gain.gain.setTargetAtTime(0, now, timeConstant);
 
+    const stopAt = now + timeConstant * RELEASE_STOP_TIME_CONSTANTS;
     for (const osc of voice.oscillators) {
-      osc.stop(now + releaseTime + 0.02);
+      osc.stop(stopAt);
     }
     this.voices.delete(note);
   }

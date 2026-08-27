@@ -7,7 +7,7 @@
 import { AudioEngine } from "./AudioEngine";
 import type { RecordedNoteEvent } from "@/types/music";
 
-const TAIL_PADDING_SECONDS = 0.5; // covers the ~0.37s release ramp so it isn't hard-cut
+const TAIL_PADDING_SECONDS = 0.8; // covers the ~0.72s release curve so it isn't hard-cut
 
 /**
  * A recording can end with a key still held down (GatedPiano.stopRecording

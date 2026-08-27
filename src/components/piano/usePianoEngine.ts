@@ -119,12 +119,12 @@ export function usePianoEngine({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || isTypingTarget(event.target)) return;
 
-      if (event.key === "ArrowDown") {
+      if (event.key === "ArrowLeft") {
         event.preventDefault();
         octaveDown();
         return;
       }
-      if (event.key === "ArrowUp") {
+      if (event.key === "ArrowRight") {
         event.preventDefault();
         octaveUp();
         return;

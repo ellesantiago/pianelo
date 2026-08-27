@@ -23,14 +23,29 @@ const SUSTAIN_LEVEL = 0.35;
 const RELEASE_SECONDS = 0.35;
 
 export class AudioEngine {
-  private ctx: AudioContext | null = null;
+  private ctx: BaseAudioContext | null = null;
   private masterGain: GainNode | null = null;
   private voices = new Map<string, Voice>();
   private volume = 0.8;
   private sustainOn = false;
 
+  /**
+   * Optionally inject a pre-built context (e.g. an OfflineAudioContext for
+   * rendering a recording to a buffer for export) instead of lazily creating
+   * a live AudioContext. Every existing call site passes no options, so
+   * ensureContext()'s lazy-creation branch below is unaffected.
+   */
+  constructor(options?: { context?: BaseAudioContext }) {
+    if (options?.context) {
+      this.ctx = options.context;
+      this.masterGain = options.context.createGain();
+      this.masterGain.gain.value = this.volume;
+      this.masterGain.connect(options.context.destination);
+    }
+  }
+
   /** Lazily creates the AudioContext on first use (required by browser autoplay policy). */
-  private ensureContext(): { ctx: AudioContext; masterGain: GainNode } {
+  private ensureContext(): { ctx: BaseAudioContext; masterGain: GainNode } {
     if (!this.ctx || !this.masterGain) {
       const Ctor =
         window.AudioContext ||
@@ -41,22 +56,22 @@ export class AudioEngine {
       this.masterGain.gain.value = this.volume;
       this.masterGain.connect(this.ctx.destination);
     }
-    if (this.ctx.state === "suspended") {
+    if (this.ctx instanceof AudioContext && this.ctx.state === "suspended") {
       void this.ctx.resume();
     }
     return { ctx: this.ctx, masterGain: this.masterGain };
   }
 
-  playNote(note: string): void {
+  playNote(note: string, atTime?: number): void {
     const { ctx, masterGain } = this.ensureContext();
 
     // Re-triggering an already-sounding note: stop the old voice first.
     if (this.voices.has(note)) {
-      this.stopVoice(note, true);
+      this.stopVoice(note, true, atTime);
     }
 
     const freq = noteToFrequency(note);
-    const now = ctx.currentTime;
+    const now = atTime ?? ctx.currentTime;
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, now);
@@ -88,7 +103,7 @@ export class AudioEngine {
     this.voices.set(note, { oscillators: [osc1, osc2], gain, heldBySustain: false });
   }
 
-  releaseNote(note: string): void {
+  releaseNote(note: string, atTime?: number): void {
     const voice = this.voices.get(note);
     if (!voice) return;
 
@@ -96,14 +111,14 @@ export class AudioEngine {
       voice.heldBySustain = true;
       return;
     }
-    this.stopVoice(note, false);
+    this.stopVoice(note, false, atTime);
   }
 
-  private stopVoice(note: string, immediate: boolean): void {
+  private stopVoice(note: string, immediate: boolean, atTime?: number): void {
     const voice = this.voices.get(note);
     if (!voice || !this.ctx) return;
 
-    const now = this.ctx.currentTime;
+    const now = atTime ?? this.ctx.currentTime;
     const releaseTime = immediate ? 0.02 : RELEASE_SECONDS;
     voice.gain.gain.cancelScheduledValues(now);
     voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);

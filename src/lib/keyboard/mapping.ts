@@ -2,7 +2,7 @@
 //
 // The keyboard covers three octaves at once, full chromatic (every black
 // key has a letter/number too), so the player rarely needs the octave
-// up/down controls (ArrowUp/ArrowDown) to reach a note. The split also
+// shift controls (ArrowLeft/ArrowRight) to reach a note. The split also
 // follows piano hand ergonomics: lower notes (further left on the piano)
 // sit under the LEFT hand's home keys, higher notes (further right on the
 // piano) sit under the RIGHT hand's, so a low-to-high run across all three
@@ -202,4 +202,47 @@ export function getFullKeyboardKeys(
   // Cap the range with the final C so the last octave doesn't look cut off.
   keys.push({ note: `C${maxOctave + 1}`, pitchClass: "C", octave: maxOctave + 1, isBlack: false });
   return keys;
+}
+
+// ---------------------------------------------------------------------------
+// Below this point: helpers specific to the letter-notes feature (converting
+// an admin-authored note token to its keyboard letter). Kept here rather
+// than under lib/letterNotes/ because both are fundamentally "note name <->
+// key" lookups -- the same domain as everything above.
+// ---------------------------------------------------------------------------
+
+const FLAT_TO_SHARP: Record<string, string> = {
+  Db: "C#",
+  Eb: "D#",
+  Gb: "F#",
+  Ab: "G#",
+  Bb: "A#",
+};
+
+/** Canonicalizes a pitch class to the sharp spelling NOTE_NAMES/KEY_LAYOUT use (no flats). */
+export function normalizePitchClass(pitchClass: string): string {
+  return FLAT_TO_SHARP[pitchClass] ?? pitchClass;
+}
+
+const FULL_NOTE_PATTERN = /^([A-Ga-g])(#|b)?(-?\d+)$/;
+
+/** Reference mapping used to convert note tokens to keyboard letters for display
+ * (see noteToLetterLabel) -- deliberately fixed to the default base octave,
+ * independent of whatever octave the live piano is currently showing. */
+const LETTER_REFERENCE_MAPPING = getOctaveMapping(DEFAULT_BASE_OCTAVE);
+
+/**
+ * Converts a letter-notes token to its keyboard letter, e.g. "C4" -> "A".
+ * A token with no octave (older, octave-less letter-notes content) or one
+ * that doesn't parse as a note at all is returned unchanged -- there's no
+ * single correct key for a bare pitch class. A token outside the reference
+ * mapping's octave window (no on-screen key label for it under the default
+ * octave) also falls back to the raw token rather than erroring.
+ */
+export function noteToLetterLabel(token: string): string {
+  const match = FULL_NOTE_PATTERN.exec(token.trim());
+  if (!match) return token;
+  const [, letter, accidental, octave] = match;
+  const pitchClass = normalizePitchClass(`${letter.toUpperCase()}${accidental ?? ""}`);
+  return LETTER_REFERENCE_MAPPING.noteToKey[`${pitchClass}${octave}`] ?? token;
 }

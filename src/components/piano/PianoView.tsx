@@ -6,6 +6,15 @@ import type { FullKeyboardKey, OctaveMapping } from "@/lib/keyboard/mapping";
 const WHITE_KEY_WIDTH = 32; // px
 const BLACK_KEY_WIDTH = 21; // px
 
+/** What text (if any) is printed on each key: nothing, the note name (e.g.
+ * "C#4"), or the computer-keyboard letter that plays it. */
+type LabelMode = "off" | "cde" | "keys";
+const LABEL_MODES: { value: LabelMode; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "cde", label: "CDE" },
+  { value: "keys", label: "Keys" },
+];
+
 export interface PianoViewProps {
   mapping: OctaveMapping;
   fullKeys: FullKeyboardKey[];
@@ -48,6 +57,10 @@ export function PianoView({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Deliberately local (not threaded through usePianoEngine, unlike
+  // sustain/volume/octave): it has no AudioEngine side effect and no other
+  // consumer, so it doesn't belong in the shared engine state.
+  const [labelMode, setLabelMode] = useState<LabelMode>("keys");
 
   // Track each key's index among the white keys (needed to position black
   // keys relative to the white key immediately before them) and total width.
@@ -163,6 +176,27 @@ export function PianoView({
         </button>
 
         <div className="flex items-center gap-2">
+          <span>Note labels</span>
+          <div className="flex items-center gap-1">
+            {LABEL_MODES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setLabelMode(option.value)}
+                aria-pressed={labelMode === option.value}
+                className={`rounded-md px-2 py-1 font-medium ${
+                  labelMode === option.value
+                    ? "bg-neutral-900 text-white"
+                    : "border border-neutral-200 bg-white hover:bg-neutral-100"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <span>Volume</span>
           <input
             type="range"
@@ -198,7 +232,7 @@ export function PianoView({
                 <PianoKey
                   key={k.note}
                   note={k.note}
-                  label={qwertyLabel ?? ""}
+                  label={labelForMode(labelMode, qwertyLabel, k.note)}
                   isMapped={Boolean(qwertyLabel)}
                   isBlack={false}
                   isActive={activeNotes.has(k.note)}
@@ -217,7 +251,7 @@ export function PianoView({
                 <PianoKey
                   key={k.note}
                   note={k.note}
-                  label={qwertyLabel ?? ""}
+                  label={labelForMode(labelMode, qwertyLabel, k.note)}
                   isMapped={Boolean(qwertyLabel)}
                   isBlack
                   isActive={activeNotes.has(k.note)}
@@ -233,6 +267,14 @@ export function PianoView({
   );
 }
 
+/** What text a key shows for the current label mode. "keys" mode keeps the
+ * key blank when nothing maps to it -- there's no letter to show. */
+function labelForMode(mode: LabelMode, qwertyLabel: string | undefined, note: string): string {
+  if (mode === "off") return "";
+  if (mode === "cde") return note;
+  return qwertyLabel ?? "";
+}
+
 interface PianoKeyProps {
   note: string;
   label: string;
@@ -245,6 +287,11 @@ interface PianoKeyProps {
 }
 
 function PianoKey({ note, label, isBlack, isMapped, isActive, style, onPress, onRelease }: PianoKeyProps) {
+  // Black keys are only 21px wide -- a 1-2 char QWERTY letter fits at
+  // text-sm, but a CDE label with an accidental (e.g. "C#4") needs to drop
+  // down further or it overflows the key.
+  const labelSizeClass = isBlack ? (label.length > 2 ? "text-[9px] leading-none" : "text-xs") : "text-sm";
+
   // Only ever emit ONE background-color utility class at a time. Mixing a
   // base color with a conditional active color relies on Tailwind's
   // generated stylesheet order to break the tie, which isn't guaranteed --
@@ -264,7 +311,7 @@ function PianoKey({ note, label, isBlack, isMapped, isActive, style, onPress, on
       aria-label={`Key ${label || note} (${note})`}
       style={style}
       className={[
-        "absolute top-0 flex flex-col items-center justify-end gap-1 rounded-b-lg border pb-2 text-xs font-semibold transition-colors duration-75",
+        "absolute top-0 flex flex-col items-center justify-end gap-1 overflow-hidden rounded-b-lg border pb-2 text-xs font-semibold transition-colors duration-75",
         isBlack ? "z-10 h-24 sm:h-28" : "h-40 sm:h-48",
         colorClasses,
         !isMapped && !isActive && "opacity-50",
@@ -283,7 +330,11 @@ function PianoKey({ note, label, isBlack, isMapped, isActive, style, onPress, on
       onPointerCancel={() => onRelease(note)}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {isMapped ? <span className="text-sm font-bold">{label}</span> : <span>{label}</span>}
+      {isMapped ? (
+        <span className={`${labelSizeClass} font-bold`}>{label}</span>
+      ) : (
+        <span className={labelSizeClass}>{label}</span>
+      )}
     </button>
   );
 }

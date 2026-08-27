@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { exportRecordingAsMp3 } from "@/lib/export/exportRecordingAsMp3";
 import {
   deleteRecording,
   downloadRecordingAsJson,
@@ -17,6 +18,8 @@ export function RecordingsList() {
   const [recordings, setRecordings] = useState<StoredRecording[] | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const engineRef = useRef<AudioEngine | null>(null);
   const timeoutsRef = useRef<number[]>([]);
@@ -66,6 +69,18 @@ export function RecordingsList() {
     refresh();
   };
 
+  const exportMp3 = async (recording: StoredRecording) => {
+    setExportError(null);
+    setExportingId(recording.id);
+    try {
+      await exportRecordingAsMp3(recording);
+    } catch {
+      setExportError(`Couldn't export "${recording.name}" as MP3.`);
+    } finally {
+      setExportingId(null);
+    }
+  };
+
   const remove = async (id: string) => {
     await deleteRecording(id);
     if (playingId === id) stopPlayback();
@@ -84,60 +99,71 @@ export function RecordingsList() {
   }
 
   return (
-    <ul className="divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-200">
-      {recordings.map((recording) => (
-        <li key={recording.id} className="flex items-center justify-between gap-3 px-4 py-3">
-          {renamingId === recording.id ? (
-            <input
-              autoFocus
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              onBlur={() => saveRename(recording.id)}
-              onKeyDown={(e) => e.key === "Enter" && saveRename(recording.id)}
-              className="rounded border border-neutral-300 px-2 py-1 text-sm"
-            />
-          ) : (
-            <span className="font-medium">{recording.name}</span>
-          )}
-
-          <div className="flex shrink-0 gap-3 text-xs">
-            {playingId === recording.id ? (
-              <button type="button" onClick={stopPlayback} className="text-red-600 hover:underline">
-                ■ Stop
-              </button>
+    <div className="space-y-2">
+      {exportError && <p className="text-sm text-red-600">{exportError}</p>}
+      <ul className="divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-200">
+        {recordings.map((recording) => (
+          <li key={recording.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            {renamingId === recording.id ? (
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => saveRename(recording.id)}
+                onKeyDown={(e) => e.key === "Enter" && saveRename(recording.id)}
+                className="rounded border border-neutral-300 px-2 py-1 text-sm"
+              />
             ) : (
+              <span className="font-medium">{recording.name}</span>
+            )}
+
+            <div className="flex shrink-0 gap-3 text-xs">
+              {playingId === recording.id ? (
+                <button type="button" onClick={stopPlayback} className="text-red-600 hover:underline">
+                  ■ Stop
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => play(recording)}
+                  className="text-neutral-900 hover:underline"
+                >
+                  ▶ Play
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => play(recording)}
-                className="text-neutral-900 hover:underline"
+                onClick={() => startRename(recording)}
+                className="text-neutral-500 hover:underline"
               >
-                ▶ Play
+                Rename
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => startRename(recording)}
-              className="text-neutral-500 hover:underline"
-            >
-              Rename
-            </button>
-            <button
-              type="button"
-              onClick={() => downloadRecordingAsJson(recording)}
-              className="text-neutral-500 hover:underline"
-            >
-              Export
-            </button>
-            <button
-              type="button"
-              onClick={() => remove(recording.id)}
-              className="text-neutral-500 hover:underline"
-            >
-              Delete
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+              <button
+                type="button"
+                onClick={() => downloadRecordingAsJson(recording)}
+                className="text-neutral-500 hover:underline"
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                disabled={exportingId === recording.id}
+                onClick={() => exportMp3(recording)}
+                className="text-neutral-500 hover:underline disabled:opacity-50"
+              >
+                {exportingId === recording.id ? "Exporting…" : "Export MP3"}
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(recording.id)}
+                className="text-neutral-500 hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

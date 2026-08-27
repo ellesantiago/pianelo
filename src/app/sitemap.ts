@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://pianelo.online";
+const SITE_URL = "https://www.pianelo.online";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = ["", "/pricing", "/recordings", "/login", "/signup", "/terms", "/privacy"];

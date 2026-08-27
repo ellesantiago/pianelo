@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 type Status = "checking" | "paid" | "pending" | "timeout";
 
-// After a GCash/Maya/card redirect, PayMongo sends the user back here. This
+// After a QR Ph redirect, PayMongo sends the user back here. This
 // page never unlocks anything itself -- it just polls our own
 // /api/payments/status, which only ever reports "paid" once the webhook has
 // confirmed it. The webhook can occasionally lag a few seconds behind the

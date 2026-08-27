@@ -1,5 +1,6 @@
 // Server-only PayMongo client for the one-time ₱99 purchase (Payment Intent
-// workflow: card, GCash, Maya). Verified against PayMongo's current docs
+// workflow: QRPH only -- the only method activated on this PayMongo account
+// without a registered business). Verified against PayMongo's current docs
 // (docs.paymongo.com) at build time:
 //   - POST /v1/payment_intents (secret key) creates the intent; amount is in
 //     centavos, currency "PHP", payment_method_allowed lists the types we
@@ -43,7 +44,7 @@ export async function createPaymentIntent(options: {
         attributes: {
           amount: options.amount,
           currency: "PHP",
-          payment_method_allowed: ["card", "gcash", "paymaya"],
+          payment_method_allowed: ["qrph"],
           capture_type: "automatic",
           description: "Pianelo — full piano access (one-time)",
           metadata: options.metadata,

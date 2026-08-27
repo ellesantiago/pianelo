@@ -8,7 +8,7 @@ interface PaywallModalProps {
   onClose: () => void;
 }
 
-type PaymentMethod = "gcash" | "paymaya" | "card";
+type PaymentMethod = "qrph";
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
 
@@ -20,9 +20,10 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
  *
  * Payment uses PayMongo's Payment Intent workflow: our server creates the
  * Intent (secret key), and THIS component creates the Payment Method and
- * attaches it directly from the browser using the PUBLIC key -- card
- * details never touch our server, only PayMongo's API. GCash/Maya always
- * redirect for authorization; PayMongo's own webhook
+ * attaches it directly from the browser using the PUBLIC key. QRPH is the
+ * only method wired up -- it's the only one activated on this PayMongo
+ * account without a registered business -- and always redirects to a hosted
+ * QR page for authorization. PayMongo's own webhook
  * (src/app/api/payments/webhook/route.ts) is the only thing that actually
  * marks the purchase paid -- this modal never unlocks anything itself.
  */
@@ -95,10 +96,6 @@ function SignupStep({ mode, setMode, onAuthenticated }: SignupStepProps) {
 function PaymentStep() {
   const [submitting, setSubmitting] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showCardForm, setShowCardForm] = useState(false);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState(""); // "MM/YY"
-  const [cvc, setCvc] = useState("");
 
   if (!PUBLIC_KEY) {
     return (
@@ -159,51 +156,13 @@ function PaymentStep() {
     return json.data;
   };
 
-  const payWithEwallet = async (method: "gcash" | "paymaya") => {
-    setSubmitting(method);
+  const payWithQrph = async () => {
+    setSubmitting("qrph");
     setError(null);
     try {
       const checkout = await startCheckout();
       if (!checkout) return;
-      const pmId = await createPaymentMethod({ type: method });
-      const attached = await attach(checkout.intentId, checkout.clientKey, pmId);
-      const redirectUrl = attached.attributes?.next_action?.redirect?.url;
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-      } else {
-        window.location.href = "/payments/return";
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-      setSubmitting(null);
-    }
-  };
-
-  const payWithCard = async () => {
-    const [expMonthStr, expYearStr] = expiry.split("/").map((part) => part.trim());
-    const expMonth = Number.parseInt(expMonthStr ?? "", 10);
-    const expYear = Number.parseInt(expYearStr ?? "", 10);
-    const normalizedCardNumber = cardNumber.replace(/\s+/g, "");
-
-    if (!normalizedCardNumber || !expMonth || !expYear || !cvc) {
-      setError("Please fill in all card fields.");
-      return;
-    }
-
-    setSubmitting("card");
-    setError(null);
-    try {
-      const checkout = await startCheckout();
-      if (!checkout) return;
-      const pmId = await createPaymentMethod({
-        type: "card",
-        details: {
-          card_number: normalizedCardNumber,
-          exp_month: expMonth,
-          exp_year: expYear < 100 ? 2000 + expYear : expYear,
-          cvc,
-        },
-      });
+      const pmId = await createPaymentMethod({ type: "qrph" });
       const attached = await attach(checkout.intentId, checkout.clientKey, pmId);
       const redirectUrl = attached.attributes?.next_action?.redirect?.url;
       if (redirectUrl) {
@@ -233,63 +192,15 @@ function PaymentStep() {
       <div className="space-y-2">
         <button
           type="button"
-          onClick={() => payWithEwallet("gcash")}
+          onClick={payWithQrph}
           disabled={submitting !== null}
           className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
         >
-          {submitting === "gcash" ? "Redirecting…" : "Pay ₱99 with GCash"}
+          {submitting === "qrph" ? "Redirecting…" : "Pay ₱99 with QR Ph"}
         </button>
-        <button
-          type="button"
-          onClick={() => payWithEwallet("paymaya")}
-          disabled={submitting !== null}
-          className="w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50"
-        >
-          {submitting === "paymaya" ? "Redirecting…" : "Pay ₱99 with Maya"}
-        </button>
-
-        {!showCardForm ? (
-          <button
-            type="button"
-            onClick={() => setShowCardForm(true)}
-            className="w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100"
-          >
-            Pay ₱99 with card
-          </button>
-        ) : (
-          <div className="space-y-2 rounded-lg border border-neutral-200 p-3">
-            <input
-              inputMode="numeric"
-              placeholder="Card number"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-            />
-            <div className="flex gap-2">
-              <input
-                placeholder="MM/YY"
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-                className="w-1/2 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-              />
-              <input
-                inputMode="numeric"
-                placeholder="CVC"
-                value={cvc}
-                onChange={(e) => setCvc(e.target.value)}
-                className="w-1/2 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={payWithCard}
-              disabled={submitting !== null}
-              className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
-            >
-              {submitting === "card" ? "Processing…" : "Pay ₱99"}
-            </button>
-          </div>
-        )}
+        <p className="text-center text-xs text-neutral-500">
+          Scan with any GCash, Maya, or bank app that supports QR Ph.
+        </p>
       </div>
     </div>
   );

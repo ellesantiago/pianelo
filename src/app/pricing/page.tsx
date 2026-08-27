@@ -24,7 +24,7 @@ export default function PricingPage() {
           Go play
         </Link>
         <p className="mt-3 text-xs text-neutral-400">
-          Pay with GCash, Maya, or card the moment you press a key.
+          Pay with QR Ph the moment you press a key.
         </p>
       </div>
     </div>

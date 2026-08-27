@@ -2,25 +2,25 @@
 //
 // The keyboard covers three octaves at once, full chromatic (every black
 // key has a letter/number too), so the player rarely needs the octave
-// shift controls (ArrowLeft/ArrowRight) to reach a note. The split also
-// follows piano hand ergonomics: lower notes (further left on the piano)
-// sit under the LEFT hand's home keys, higher notes (further right on the
-// piano) sit under the RIGHT hand's, so a low-to-high run across all three
-// octaves moves left-to-right across the keyboard too, the same way it does
-// on the piano itself.
+// shift controls (ArrowLeft/ArrowRight) to reach a note. This exact
+// key-per-note table is a fixed, external reference (not derived from any
+// physical-keyboard heuristic) -- reproduce it verbatim rather than
+// re-deriving it:
 //
-//   Base octave    -- white A S D F G H J K, black 2 3 5 6 7
-//                      (C4 -> "A", D4 -> "S", ... C5 -> "K". A S D F G is
-//                      the left hand, H J K is the right hand -- the base
-//                      octave itself is the hand-split's pivot point.)
-//   One octave down -- LEFT hand only: white Z X C V B R T, black 1 4 Q W E
-//   One octave up    -- RIGHT hand only: white L ; ' N M , ., black 8 9 0 Y U
+//   Octave 3 (one below the default base octave):
+//     C3=Q  C#3=`  D3=W  D#3=1  E3=E  F3=R  F#3=2
+//     G3=T  G#3=3  A3=G  A#3=4  B3=F
+//   Octave 4 (DEFAULT_BASE_OCTAVE):
+//     C4=D  C#4=5  D4=S  D#4=6  E4=V  F4=B  F#4=7
+//     G4=N  G#4=8  A4=L  A#4=9  B4=K
+//   Octave 5 (one above the default base octave):
+//     C5=J  C#5=0  D5=H  D#5=-  E5=Y  F5=U  F#5==
+//     G5=I  G#5=[  A5=O  A#5=]  B5=P
 //
-// Within each octave, black keys always come from a row physically ABOVE
-// the row(s) their white keys come from -- numbers above letters, and (once
-// numbers run out) the QWERTY row above the ZXCV row -- the same "black is
-// higher up, white is lower down" split the base octave already uses
-// (numbers above ASDF), so it's not a different rule to learn per octave.
+// getOctaveMapping/noteForSemitone below reuse this same 36-key table for
+// any other octave window too (e.g. shifting the live piano up or down via
+// ArrowLeft/ArrowRight) -- same keys, shifted by whole octaves, exactly as
+// they already do for octaves 3-5 above.
 //
 // The visual piano itself still renders every note across the full
 // MIN_OCTAVE..MAX_OCTAVE range (see getFullKeyboardKeys below) and every key
@@ -51,56 +51,47 @@ interface KeyLayoutEntry {
 
 // prettier-ignore
 export const KEY_LAYOUT: KeyLayoutEntry[] = [
-  // One octave below the base -- LEFT hand only, full chromatic.
-  // White (bottom rows): Z X C V B, then R T (ZXCVB is only 5 keys --
-  // one row short of the 7 whites an octave needs, so it borrows the
-  // last 2 keys of the row above once the black keys claim the rest).
-  // Black (top rows): 1 4 (number row), then Q W E (row above ZXCV).
-  { key: "z", semitone: -12, isBlack: false }, // C
-  { key: "1", semitone: -11, isBlack: true  }, // C#
-  { key: "x", semitone: -10, isBlack: false }, // D
-  { key: "4", semitone: -9,  isBlack: true  }, // D#
-  { key: "c", semitone: -8,  isBlack: false }, // E
-  { key: "v", semitone: -7,  isBlack: false }, // F
-  { key: "q", semitone: -6,  isBlack: true  }, // F#
-  { key: "b", semitone: -5,  isBlack: false }, // G
-  { key: "w", semitone: -4,  isBlack: true  }, // G#
-  { key: "r", semitone: -3,  isBlack: false }, // A
-  { key: "e", semitone: -2,  isBlack: true  }, // A#
-  { key: "t", semitone: -1,  isBlack: false }, // B
+  // Octave 3 (semitone -12..-1)
+  { key: "q", semitone: -12, isBlack: false }, // C3
+  { key: "`", semitone: -11, isBlack: true  }, // C#3
+  { key: "w", semitone: -10, isBlack: false }, // D3
+  { key: "1", semitone: -9,  isBlack: true  }, // D#3
+  { key: "e", semitone: -8,  isBlack: false }, // E3
+  { key: "r", semitone: -7,  isBlack: false }, // F3
+  { key: "2", semitone: -6,  isBlack: true  }, // F#3
+  { key: "t", semitone: -5,  isBlack: false }, // G3
+  { key: "3", semitone: -4,  isBlack: true  }, // G#3
+  { key: "g", semitone: -3,  isBlack: false }, // A3
+  { key: "4", semitone: -2,  isBlack: true  }, // A#3
+  { key: "f", semitone: -1,  isBlack: false }, // B3
 
-  // One octave above the base -- RIGHT hand only, full chromatic.
-  // White (bottom/home rows): L ; ' (ASDF-row remnant), then N M , .
-  // Black (top rows): 8 9 0 (number row), then Y U (row above the rest).
-  { key: "l", semitone: 12, isBlack: false }, // C
-  { key: "8", semitone: 13, isBlack: true  }, // C#
-  { key: ";", semitone: 14, isBlack: false }, // D
-  { key: "9", semitone: 15, isBlack: true  }, // D#
-  { key: "'", semitone: 16, isBlack: false }, // E
-  { key: "n", semitone: 17, isBlack: false }, // F
-  { key: "0", semitone: 18, isBlack: true  }, // F#
-  { key: "m", semitone: 19, isBlack: false }, // G
-  { key: "y", semitone: 20, isBlack: true  }, // G#
-  { key: ",", semitone: 21, isBlack: false }, // A
-  { key: "u", semitone: 22, isBlack: true  }, // A#
-  { key: ".", semitone: 23, isBlack: false }, // B
+  // Octave 4 (semitone 0..11, DEFAULT_BASE_OCTAVE)
+  { key: "d", semitone: 0,  isBlack: false }, // C4
+  { key: "5", semitone: 1,  isBlack: true  }, // C#4
+  { key: "s", semitone: 2,  isBlack: false }, // D4
+  { key: "6", semitone: 3,  isBlack: true  }, // D#4
+  { key: "v", semitone: 4,  isBlack: false }, // E4
+  { key: "b", semitone: 5,  isBlack: false }, // F4
+  { key: "7", semitone: 6,  isBlack: true  }, // F#4
+  { key: "n", semitone: 7,  isBlack: false }, // G4
+  { key: "8", semitone: 8,  isBlack: true  }, // G#4
+  { key: "l", semitone: 9,  isBlack: false }, // A4
+  { key: "9", semitone: 10, isBlack: true  }, // A#4
+  { key: "k", semitone: 11, isBlack: false }, // B4
 
-  // Base octave -- full chromatic. Listed LAST so its "k" (not the octave
-  // above's "l") wins as the displayed label for their shared note -- "k"
-  // is the canonical label for C5.
-  { key: "a", semitone: 0,  isBlack: false }, // C
-  { key: "2", semitone: 1,  isBlack: true  }, // C#
-  { key: "s", semitone: 2,  isBlack: false }, // D
-  { key: "3", semitone: 3,  isBlack: true  }, // D#
-  { key: "d", semitone: 4,  isBlack: false }, // E
-  { key: "f", semitone: 5,  isBlack: false }, // F
-  { key: "5", semitone: 6,  isBlack: true  }, // F#
-  { key: "g", semitone: 7,  isBlack: false }, // G
-  { key: "6", semitone: 8,  isBlack: true  }, // G#
-  { key: "h", semitone: 9,  isBlack: false }, // A
-  { key: "7", semitone: 10, isBlack: true  }, // A#
-  { key: "j", semitone: 11, isBlack: false }, // B
-  { key: "k", semitone: 12, isBlack: false }, // C (next octave, shared with "8")
+  // Octave 5 (semitone 12..23)
+  { key: "j", semitone: 12, isBlack: false }, // C5
+  { key: "0", semitone: 13, isBlack: true  }, // C#5
+  { key: "h", semitone: 14, isBlack: false }, // D5
+  { key: "-", semitone: 15, isBlack: true  }, // D#5
+  { key: "y", semitone: 16, isBlack: false }, // E5
+  { key: "u", semitone: 17, isBlack: false }, // F5
+  { key: "=", semitone: 18, isBlack: true  }, // F#5
+  { key: "i", semitone: 19, isBlack: false }, // G5
+  { key: "[", semitone: 20, isBlack: true  }, // G#5
+  { key: "o", semitone: 21, isBlack: false }, // A5
+  { key: "]", semitone: 22, isBlack: true  }, // A#5
+  { key: "p", semitone: 23, isBlack: false }, // B5
 ];
 
 export const DEFAULT_BASE_OCTAVE = 4;
@@ -227,8 +218,10 @@ export function normalizePitchClass(pitchClass: string): string {
 const FULL_NOTE_PATTERN = /^([A-Ga-g])(#|b)?(-?\d+)$/;
 
 /** Reference mapping used to convert note tokens to keyboard letters for display
- * (see noteToLetterLabel) -- deliberately fixed to the default base octave,
- * independent of whatever octave the live piano is currently showing. */
+ * (see noteToLetterLabel) -- deliberately fixed to DEFAULT_BASE_OCTAVE (the
+ * fixed KEY_LAYOUT table above is authored directly against octaves 3-5,
+ * matching that convention), independent of whatever octave the live piano
+ * is currently showing. */
 const LETTER_REFERENCE_MAPPING = getOctaveMapping(DEFAULT_BASE_OCTAVE);
 
 /**
@@ -254,15 +247,17 @@ function absoluteSemitone(pitchClass: string, octave: number): number {
   return octave * 12 + NOTE_NAMES.indexOf(pitchClass as (typeof NOTE_NAMES)[number]);
 }
 
-// A4 -- the same left/right pivot the physical keyboard already uses (see
-// the KEY_LAYOUT comment above: base octave's C-G is the left hand's A S D
-// F G, A-B and everything above is the right hand's H J K and beyond).
+// Fallback left/right pivot for beats saved without an explicit hand split
+// (see parseBeats.ts) -- the fixed KEY_LAYOUT table above has no inherent
+// notion of "hand," so this just keeps the old pitch-based guess (A4 and
+// above is the right hand) as a best-effort default for that legacy case.
 const LEFT_RIGHT_PIVOT = absoluteSemitone("A", DEFAULT_BASE_OCTAVE);
 
 /**
  * Whether a letter-notes token falls on the keyboard's left-hand side (C4-G4
  * and below) rather than the right (A4 and above) -- for splitting a beat's
- * simultaneous notes into a two-hand display. A token with no parseable
+ * simultaneous notes into a two-hand display when the beat has no explicit
+ * hand split of its own (see parseBeats.ts). A token with no parseable
  * octave has no pitch to compare, so it defaults to the left column.
  */
 export function isLeftHandNote(token: string): boolean {

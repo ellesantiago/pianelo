@@ -243,18 +243,24 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
 
 // Splits one beat's simultaneous notes across the two hand columns, so a
 // beat that needs both hands at once shows both side by side in the same
-// row, and a beat only one hand plays leaves the other column blank.
-function splitByHand(notes: string[]): { left: string[]; right: string[] } {
+// row, and a beat only one hand plays leaves the other column blank. Prefers
+// the beat's own explicit left/right split (see parseBeats.ts) -- how the
+// admin actually typed it -- over guessing from pitch; the guess is only a
+// fallback for beats saved before that split existed.
+function splitByHand(beat: Beat): { left: string[]; right: string[] } {
+  if (beat.left !== undefined || beat.right !== undefined) {
+    return { left: beat.left ?? [], right: beat.right ?? [] };
+  }
   const left: string[] = [];
   const right: string[] = [];
-  for (const note of notes) {
+  for (const note of beat.notes) {
     (isLeftHandNote(note) ? left : right).push(note);
   }
   return { left, right };
 }
 
 function BeatRow({ beat, format }: { beat: Beat; format: Format }) {
-  const { left, right } = splitByHand(beat.notes);
+  const { left, right } = splitByHand(beat);
   const label = (handNotes: string[]) =>
     (format === "cde" ? handNotes : handNotes.map(noteToLetterLabel)).join(" ");
 

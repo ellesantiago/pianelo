@@ -27,12 +27,14 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
  * marks the purchase paid -- this modal never unlocks anything itself.
  */
 export function PaywallModal({ isLoggedIn, onClose }: PaywallModalProps) {
+  const [mode, setMode] = useState<"signup" | "login">("signup");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-start justify-between">
           <h2 className="text-lg font-semibold">
-            {isLoggedIn ? "Unlock the full piano" : "Sign up to play"}
+            {isLoggedIn ? "Unlock the full piano" : mode === "signup" ? "Sign up to play" : "Log in to play"}
           </h2>
           <button
             type="button"
@@ -44,19 +46,29 @@ export function PaywallModal({ isLoggedIn, onClose }: PaywallModalProps) {
           </button>
         </div>
 
-        {isLoggedIn ? <PaymentStep /> : <SignupStep onAuthenticated={onClose} />}
+        {isLoggedIn ? (
+          <PaymentStep />
+        ) : (
+          <SignupStep mode={mode} setMode={setMode} onAuthenticated={onClose} />
+        )}
       </div>
     </div>
   );
 }
 
-function SignupStep({ onAuthenticated }: { onAuthenticated: () => void }) {
-  const [mode, setMode] = useState<"signup" | "login">("signup");
+interface SignupStepProps {
+  mode: "signup" | "login";
+  setMode: (mode: "signup" | "login") => void;
+  onAuthenticated: () => void;
+}
 
+function SignupStep({ mode, setMode, onAuthenticated }: SignupStepProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-neutral-500">
-        Create a free account, then unlock the full piano for a one-time ₱99 — no subscription.
+        {mode === "signup"
+          ? "Create a free account, then unlock the full piano for a one-time ₱99 — no subscription."
+          : "Log in, then unlock the full piano for a one-time ₱99 — no subscription."}
       </p>
       <AuthForm mode={mode} onAuthenticated={onAuthenticated} />
       <p className="text-center text-xs text-neutral-500">

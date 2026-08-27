@@ -6,7 +6,7 @@ export default async function HomePage() {
   const user = await getCurrentUser();
 
   return (
-    <div className="space-y-10">
+    <div className="flex flex-1 flex-col justify-end space-y-10">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Play piano, right in your browser.</h1>
         <p className="text-neutral-500">

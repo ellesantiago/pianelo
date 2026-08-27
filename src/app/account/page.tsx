@@ -47,6 +47,16 @@ export default async function AccountPage() {
           </p>
         )}
 
+        <Link
+          href="/recordings"
+          className="block rounded-xl border border-neutral-200 p-4 text-sm hover:bg-neutral-50"
+        >
+          <span className="font-medium">My Recordings →</span>
+          <p className="mt-1 text-neutral-500">
+            Saved on this device only -- recordings are never uploaded anywhere.
+          </p>
+        </Link>
+
         <SignOutButton />
       </div>
 

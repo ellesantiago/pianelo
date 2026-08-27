@@ -112,17 +112,18 @@ export function PianoView({
     <div
       ref={containerRef}
       className={`${
-        // The `left-1/2 -mx-[50vw]` full-bleed trick only works in normal
-        // document flow. requestFullscreen() forces `position: fixed` (via
-        // the browser's own :fullscreen UA styles), which breaks that trick
-        // -- left:50% + the negative margin resolve against the viewport
-        // instead of this element's static position, leaving the box
-        // pinned to the left edge at its old capped width with blank space
-        // filling the rest of the screen. Fullscreen doesn't need the
-        // trick at all: the UA styles already size it to the viewport.
+        // `left-1/2 -translate-x-1/2` centers this element on the viewport
+        // (its parent, `main`, is itself centered via `mx-auto`) regardless
+        // of how wide it actually renders -- unlike the old `-mx-[50vw]`
+        // full-bleed trick, which assumed the box always renders at exactly
+        // `w-screen` and broke once `max-w-[1400px]` capped it below that on
+        // wide viewports, leaving it pinned to the left edge instead of
+        // centered. Fullscreen doesn't need any of this: requestFullscreen()
+        // forces `position: fixed` (via the browser's own :fullscreen UA
+        // styles) and already sizes the box to the viewport.
         isFullscreen
           ? "fixed inset-0 z-50 h-dvh w-dvw max-w-none"
-          : "relative left-1/2 right-1/2 -mx-[50vw] w-screen max-w-[1400px]"
+          : "relative left-1/2 w-screen max-w-[1400px] -translate-x-1/2"
       } flex flex-col gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:p-6 ${className ?? ""}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-neutral-700">
@@ -228,14 +229,6 @@ export function PianoView({
             })}
         </div>
       </div>
-      <p className="text-center text-xs text-neutral-500">
-        Click or tap any key to play it. Your computer keyboard plays three octaves at once,
-        split by hand like the piano itself: your left hand plays the lower octave (white Z X C
-        V B R T, black 1 4 Q W E), your right hand plays the higher octave (white L ; &apos; N M
-        , ., black 8 9 0 Y U), and the highlighted octave in the middle (white A–K, black
-        2 3 5 6 7) spans both hands. In every octave, black-key letters/numbers come from the
-        row above their white keys. ↑ / ↓ (or the Octave buttons) shift all three.
-      </p>
     </div>
   );
 }

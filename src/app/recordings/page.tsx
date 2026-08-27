@@ -1,13 +1,15 @@
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { RecordingsList } from "@/components/recording/RecordingsList";
 import { AdSlot } from "@/components/ads/AdSlot";
 
 // Recordings live entirely in this browser's IndexedDB (see
-// lib/recordings/localStore.ts) -- there is no server-side list to gate, so
-// this page doesn't require login. It's most useful once the piano is
-// actually unlocked, since a locked piano never produces a note to record.
+// lib/recordings/localStore.ts) -- there is no server-side list to gate --
+// but the page itself still requires an account, so it's reachable only from
+// Account rather than the main nav.
 export default async function RecordingsPage() {
   const user = await getCurrentUser();
+  if (!user) redirect("/signup");
 
   return (
     <div className="grid gap-8 sm:grid-cols-[1fr_auto]">
@@ -19,7 +21,7 @@ export default async function RecordingsPage() {
         <RecordingsList />
       </div>
 
-      <AdSlot slot="recordings-rail" hidden={user?.hasPurchased} className="w-full sm:w-40" />
+      <AdSlot slot="recordings-rail" hidden={user.hasPurchased} className="w-full sm:w-40" />
     </div>
   );
 }

@@ -40,9 +40,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               Pianelo
             </Link>
             <nav className="flex items-center gap-5 text-sm text-neutral-500">
-              <Link href="/recordings" className="hover:text-neutral-900">
-                Recordings
-              </Link>
               {user ? (
                 <>
                   <Link href="/account" className="hover:text-neutral-900">
@@ -67,12 +64,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">{children}</main>
+        <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-10">{children}</main>
 
-        <footer className="border-t border-neutral-200 py-8">
+        <footer className="border-t border-neutral-200 py-3">
           <div className="mx-auto max-w-4xl px-4">
             <AdSlot slot="footer" hidden={user?.hasPurchased} />
-            <div className="mt-6 flex flex-col items-center gap-2 text-xs text-neutral-400">
+            <div className="mt-2 flex flex-col items-center gap-1 text-xs text-neutral-400">
               <div className="flex gap-4">
                 <Link href="/pricing" className="hover:text-neutral-600">
                   Pricing

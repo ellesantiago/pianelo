@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth/AuthForm";
 
 interface PaywallModalProps {
@@ -22,8 +22,10 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
  * Intent (secret key), and THIS component creates the Payment Method and
  * attaches it directly from the browser using the PUBLIC key. QRPH is the
  * only method wired up -- it's the only one activated on this PayMongo
- * account without a registered business -- and always redirects to a hosted
- * QR page for authorization. PayMongo's own webhook
+ * account without a registered business. Unlike e-wallets, QRPH doesn't
+ * redirect: the attach response carries a base64 QR image
+ * (next_action.code.image_url) that we render inline and poll against while
+ * the customer scans it. PayMongo's own webhook
  * (src/app/api/payments/webhook/route.ts) is the only thing that actually
  * marks the purchase paid -- this modal never unlocks anything itself.
  */
@@ -96,6 +98,40 @@ function SignupStep({ mode, setMode, onAuthenticated }: SignupStepProps) {
 function PaymentStep() {
   const [submitting, setSubmitting] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (!qrImage || confirmed) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const res = await fetch("/api/payments/status");
+        if (res.ok) {
+          const { hasPurchased } = await res.json();
+          if (hasPurchased) {
+            clearInterval(interval);
+            setConfirmed(true);
+            window.location.href = "/";
+            return;
+          }
+        }
+      } catch {
+        // Keep polling -- a transient network error shouldn't stop retries.
+      }
+      // QR codes expire after ~30 minutes; stop polling well before that.
+      if (attempts >= 200) {
+        clearInterval(interval);
+        setError("This QR code has expired. Please try again.");
+        setQrImage(null);
+        setSubmitting(null);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [qrImage, confirmed]);
 
   if (!PUBLIC_KEY) {
     return (
@@ -164,11 +200,16 @@ function PaymentStep() {
       if (!checkout) return;
       const pmId = await createPaymentMethod({ type: "qrph" });
       const attached = await attach(checkout.intentId, checkout.clientKey, pmId);
-      const redirectUrl = attached.attributes?.next_action?.redirect?.url;
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
+      // QRPH doesn't redirect -- it hands back a base64 QR image to render
+      // and scan in place.
+      const imageUrl = attached.attributes?.next_action?.code?.image_url as string | undefined;
+      if (imageUrl) {
+        const src = imageUrl.startsWith("data:") || imageUrl.startsWith("http")
+          ? imageUrl
+          : `data:image/png;base64,${imageUrl}`;
+        setQrImage(src);
       } else {
-        window.location.href = "/payments/return";
+        throw new Error("Could not generate a QR code. Please try again.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -189,19 +230,45 @@ function PaymentStep() {
         </p>
       )}
 
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={payWithQrph}
-          disabled={submitting !== null}
-          className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
-        >
-          {submitting === "qrph" ? "Redirecting…" : "Pay ₱99 with QR Ph"}
-        </button>
-        <p className="text-center text-xs text-neutral-500">
-          Scan with any GCash, Maya, or bank app that supports QR Ph.
-        </p>
-      </div>
+      {qrImage ? (
+        <div className="space-y-3 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- base64 data URI, not a static asset */}
+          <img
+            src={qrImage}
+            alt="Scan to pay with QR Ph"
+            className="mx-auto h-56 w-56 rounded-lg border border-neutral-200"
+          />
+          <p className="text-sm text-neutral-500">
+            Scan with any GCash, Maya, or bank app that supports QR Ph.
+          </p>
+          <p className="text-xs text-neutral-400">Waiting for confirmation…</p>
+          <button
+            type="button"
+            onClick={() => {
+              setQrImage(null);
+              setSubmitting(null);
+              setError(null);
+            }}
+            className="text-xs text-neutral-500 underline"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={payWithQrph}
+            disabled={submitting !== null}
+            className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
+          >
+            {submitting === "qrph" ? "Generating QR…" : "Pay ₱99 with QR Ph"}
+          </button>
+          <p className="text-center text-xs text-neutral-500">
+            Scan with any GCash, Maya, or bank app that supports QR Ph.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

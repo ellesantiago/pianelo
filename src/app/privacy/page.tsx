@@ -5,9 +5,6 @@ import { LAST_UPDATED, LEGAL_ENTITY_NAME, REGISTERED_ADDRESS, SUPPORT_EMAIL } fr
 export default function PrivacyPage() {
   return (
     <article className="max-w-none space-y-4 text-sm text-neutral-700">
-      <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
-        Draft — not final. Requires legal review before publishing.
-      </div>
       <h1 className="text-2xl font-bold text-neutral-900">Privacy Policy</h1>
       <p className="text-xs text-neutral-500">Last updated: {LAST_UPDATED}</p>
 

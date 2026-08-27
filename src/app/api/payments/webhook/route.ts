@@ -5,6 +5,9 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 /**
  * PayMongo webhook: the sole source of truth for marking a purchase paid.
  * Never trust the browser's "payment successful" redirect on its own.
+ * Product-agnostic -- it just flips whichever purchases row matches the
+ * payment intent id, regardless of which product (content_unlock /
+ * remove_ads) that row is for.
  *
  * Signature format (Paymongo-Signature header): "t=<unix_ts>,te=<test_sig>,
  * li=<live_sig>", where each signature is HMAC-SHA256(`${t}.${raw_body}`,

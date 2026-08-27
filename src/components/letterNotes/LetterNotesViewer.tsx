@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { parseBeats, type Beat } from "@/lib/letterNotes/parseBeats";
 import { isLeftHandNote, noteToLetterLabel } from "@/lib/keyboard/mapping";
+import { PurchaseModal } from "@/components/paywall/PurchaseModal";
+import { formatPeso, PRODUCTS } from "@/lib/payments/products";
 
 interface LetterNotesViewerProps {
   title: string;
-  notes: string;
+  /** null when the caller hasn't paid for content_unlock -- shows a locked teaser instead. */
+  notes: string | null;
+  isLoggedIn?: boolean;
 }
 
 type Speed = "slow" | "medium" | "fast";
@@ -36,8 +40,47 @@ const VIEWPORT_HEIGHT = 5 * ROW_STRIDE - ROW_GAP;
  * Visual-only reading aid: scrolls the song's note letters from start to end
  * once, at a user-selectable speed and pausable at any point. No audio --
  * the user plays the keys themselves while following along.
+ *
+ * Split into a thin wrapper + the actual viewer (rather than an early return
+ * inside one component) so a locked song never runs the scroll-animation
+ * hooks below with an empty `notes` string.
  */
-export function LetterNotesViewer({ title, notes }: LetterNotesViewerProps) {
+export function LetterNotesViewer({ title, notes, isLoggedIn }: LetterNotesViewerProps) {
+  if (notes === null) {
+    return <LockedTeaser title={title} isLoggedIn={isLoggedIn ?? false} />;
+  }
+  return <UnlockedViewer title={title} notes={notes} />;
+}
+
+function LockedTeaser({ title, isLoggedIn }: { title: string; isLoggedIn: boolean }) {
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+
+  return (
+    <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <p className="text-sm text-neutral-500">
+        Unlock letter notes + recording for a one-time{" "}
+        {formatPeso(PRODUCTS.content_unlock.priceCentavos)} to read along.
+      </p>
+      <button
+        type="button"
+        onClick={() => setPurchaseModalOpen(true)}
+        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-700"
+      >
+        Unlock — {formatPeso(PRODUCTS.content_unlock.priceCentavos)}
+      </button>
+      {purchaseModalOpen && (
+        <PurchaseModal
+          product="content_unlock"
+          isLoggedIn={isLoggedIn}
+          onClose={() => setPurchaseModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
   const slots = parseBeats(notes);
   const [format, setFormat] = useState<Format>("letters");
   const slotsRef = useRef(slots);

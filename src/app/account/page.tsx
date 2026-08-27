@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { PurchaseButton } from "@/components/paywall/PurchaseButton";
 
 export default async function AccountPage() {
   const user = await getCurrentUser();
@@ -32,20 +33,38 @@ export default async function AccountPage() {
             <span>{user.email}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-neutral-500">Access</span>
-            <span>{user.hasPurchased ? "Full access — thank you!" : "Not unlocked yet"}</span>
+            <span className="text-neutral-500">Piano</span>
+            <span>Free, unlimited use</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-neutral-500">Letter notes + recording</span>
+            {user.hasContentUnlock ? (
+              <span>Unlocked — thank you!</span>
+            ) : (
+              <PurchaseButton
+                product="content_unlock"
+                isLoggedIn
+                className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-neutral-700"
+              />
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-neutral-500">Ads</span>
+            {user.hasAdsRemoved ? (
+              <span>Removed — thank you!</span>
+            ) : (
+              <PurchaseButton
+                product="remove_ads"
+                isLoggedIn
+                className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-neutral-700"
+              />
+            )}
           </div>
           <div className="flex justify-between">
             <span className="text-neutral-500">Devices</span>
             <span>1 (Pianelo allows one device at a time)</span>
           </div>
         </div>
-
-        {!user.hasPurchased && (
-          <p className="text-sm text-neutral-500">
-            Press any key on the piano to unlock full access for a one-time ₱99.
-          </p>
-        )}
 
         <Link
           href="/recordings"
@@ -60,7 +79,7 @@ export default async function AccountPage() {
         <SignOutButton />
       </div>
 
-      <AdSlot slot="account-rail" hidden={user.hasPurchased} className="w-full sm:w-40" />
+      <AdSlot slot="account-rail" hidden={user.hasAdsRemoved} className="w-full sm:w-40" />
     </div>
   );
 }

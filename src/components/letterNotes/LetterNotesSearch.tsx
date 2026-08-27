@@ -1,24 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { LetterNotesViewer } from "./LetterNotesViewer";
-import type { LetterNote } from "@/types/letterNotes";
+
+interface SearchResult {
+  id: string;
+  title: string;
+  /** null when the caller hasn't paid for content_unlock -- see the search route. */
+  notes: string | null;
+}
+
+interface LetterNotesSearchProps {
+  isLoggedIn: boolean;
+}
 
 /**
- * Free-for-everyone search over admin-curated letter-notes songs (public RLS
- * read policy on letter_notes -- see supabase/migrations/0003_letter_notes.sql),
- * queried directly from the browser since there's nothing user-specific to
- * gate here.
+ * Search over admin-curated letter-notes songs -- a free preview surface
+ * above the piano. Titles are searchable by anyone; viewing a song's actual
+ * notes requires the content_unlock purchase (enforced server-side, see
+ * app/api/letter-notes/search/route.ts, not just hidden in this UI).
  */
-export function LetterNotesSearch() {
+export function LetterNotesSearch({ isLoggedIn }: LetterNotesSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<LetterNote[]>([]);
-  const [selected, setSelected] = useState<LetterNote | null>(null);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [selected, setSelected] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
-
-  if (!isSupabaseConfigured) return null;
 
   const search = async (value: string) => {
     setQuery(value);
@@ -28,19 +34,13 @@ export function LetterNotesSearch() {
       return;
     }
     setLoading(true);
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) {
+    try {
+      const res = await fetch(`/api/letter-notes/search?q=${encodeURIComponent(value.trim())}`);
+      const json = res.ok ? await res.json() : { results: [] };
+      setResults(json.results ?? []);
+    } finally {
       setLoading(false);
-      return;
     }
-    const { data } = await supabase
-      .from("letter_notes")
-      .select("id, title, notes, created_at, updated_at")
-      .ilike("title", `%${value.trim()}%`)
-      .order("title")
-      .limit(10);
-    setResults(data ?? []);
-    setLoading(false);
   };
 
   return (
@@ -74,7 +74,14 @@ export function LetterNotesSearch() {
         </ul>
       )}
 
-      {selected && <LetterNotesViewer key={selected.id} title={selected.title} notes={selected.notes} />}
+      {selected && (
+        <LetterNotesViewer
+          key={selected.id}
+          title={selected.title}
+          notes={selected.notes}
+          isLoggedIn={isLoggedIn}
+        />
+      )}
     </div>
   );
 }

@@ -217,27 +217,41 @@ export function normalizePitchClass(pitchClass: string): string {
 
 const FULL_NOTE_PATTERN = /^([A-Ga-g])(#|b)?(-?\d+)$/;
 
-/** Reference mapping used to convert note tokens to keyboard letters for display
- * (see noteToLetterLabel) -- deliberately fixed to DEFAULT_BASE_OCTAVE (the
- * fixed KEY_LAYOUT table above is authored directly against octaves 3-5,
- * matching that convention), independent of whatever octave the live piano
- * is currently showing. */
-const LETTER_REFERENCE_MAPPING = getOctaveMapping(DEFAULT_BASE_OCTAVE);
+/** semitone offset (relative to DEFAULT_BASE_OCTAVE's C, matching KEY_LAYOUT)
+ * -> uppercase key label. Built once from KEY_LAYOUT so noteToLetterLabel
+ * doesn't need to round-trip through getOctaveMapping's note-name strings. */
+const SEMITONE_TO_KEY: Record<number, string> = {};
+for (const entry of KEY_LAYOUT) {
+  SEMITONE_TO_KEY[entry.semitone] = entry.key.toUpperCase();
+}
+
+/** KEY_LAYOUT only spans octaves 3-5 -- a token outside that range reuses
+ * whichever boundary octave (3 below, 5 above) is nearest, keeping the same
+ * pitch class's key (e.g. "D2" reuses "D3"'s key, "D1" also reuses "D3"'s
+ * key, not a different one -- there's no data past the boundary to do
+ * anything more specific with). Clamping the octave, not wrapping the
+ * pattern, matches how the table itself was specified: verified against
+ * "D2" -> the same key as "D3" ("W"), not "D5" (a 3-octave wrap would have
+ * given "D2" and "D5" the same key, which is wrong). */
+function clampToTableOctave(octave: number): number {
+  return Math.min(5, Math.max(3, octave));
+}
 
 /**
- * Converts a letter-notes token to its keyboard letter, e.g. "C4" -> "A".
+ * Converts a letter-notes token to its keyboard letter, e.g. "C4" -> "D".
  * A token with no octave (older, octave-less letter-notes content) or one
  * that doesn't parse as a note at all is returned unchanged -- there's no
- * single correct key for a bare pitch class. A token outside the reference
- * mapping's octave window (no on-screen key label for it under the default
- * octave) also falls back to the raw token rather than erroring.
+ * single correct key for a bare pitch class. Every other token always
+ * converts to some key, even outside octaves 3-5 (see clampToTableOctave).
  */
 export function noteToLetterLabel(token: string): string {
   const match = FULL_NOTE_PATTERN.exec(token.trim());
   if (!match) return token;
-  const [, letter, accidental, octave] = match;
+  const [, letter, accidental, octaveStr] = match;
   const pitchClass = normalizePitchClass(`${letter.toUpperCase()}${accidental ?? ""}`);
-  return LETTER_REFERENCE_MAPPING.noteToKey[`${pitchClass}${octave}`] ?? token;
+  const octave = clampToTableOctave(Number.parseInt(octaveStr, 10));
+  const semitone = (octave - DEFAULT_BASE_OCTAVE) * 12 + NOTE_NAMES.indexOf(pitchClass as (typeof NOTE_NAMES)[number]);
+  return SEMITONE_TO_KEY[semitone] ?? token;
 }
 
 /** Absolute semitone count from C0 -- unlike KEY_LAYOUT's semitone offsets

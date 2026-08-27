@@ -89,13 +89,12 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
   }, [slots]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef(0);
-  const speedRef = useRef<Speed>("medium");
+  const speedRef = useRef<Speed>("slow");
   const frameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
-  const [speed, setSpeed] = useState<Speed>("medium");
-  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState<Speed>("slow");
+  const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -111,8 +110,8 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
   };
 
   const applyPosition = () => {
-    if (trackRef.current) {
-      trackRef.current.style.transform = `translateY(${-positionRef.current}px)`;
+    if (viewportRef.current) {
+      viewportRef.current.scrollTop = positionRef.current;
     }
   };
 
@@ -149,20 +148,24 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
     frameRef.current = null;
   };
 
-  // Mount-only: the parent keys this component by song id (see
-  // LetterNotesSearch), so a different song selection remounts it fresh
-  // instead of needing to reset state here.
+  // Starts paused -- the song opens sitting at the top, letting the reader
+  // scroll through it by hand before committing to Play. Still need the
+  // cleanup so a mid-playback unmount (parent keys this by song id -- see
+  // LetterNotesSearch) cancels any pending frame.
   useEffect(() => {
-    startLoop();
     return () => stopLoop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While paused, the viewport is a plain scrollable element (see the
+  // `onScroll` handler below) -- syncing from its live scrollTop here means
+  // resuming Play continues from wherever the reader scrolled to, rather
+  // than snapping back to the last auto-scrolled position.
   const togglePlaying = () => {
     if (playing) {
       stopLoop();
       setPlaying(false);
     } else {
+      if (viewportRef.current) positionRef.current = viewportRef.current.scrollTop;
       setPlaying(true);
       startLoop();
     }
@@ -175,6 +178,17 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
     setPlaying(true);
     applyPosition();
     startLoop();
+  };
+
+  // Manual scrolling only takes effect while paused -- during playback the
+  // animation loop owns scrollTop every frame, so a scroll event fired by
+  // our own `applyPosition` write is ignored here rather than fighting it.
+  const handleScroll = () => {
+    if (playing) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    positionRef.current = viewport.scrollTop;
+    setDone(viewport.scrollTop >= maxScroll() - 1);
   };
 
   return (
@@ -230,12 +244,24 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
         <span>Right hand</span>
       </div>
 
-      <div ref={viewportRef} className="overflow-hidden" style={{ height: VIEWPORT_HEIGHT }}>
-        <div ref={trackRef} className="flex flex-col" style={{ gap: ROW_GAP }}>
-          {slots.map((slot, i) => (
-            <BeatRow key={i} beat={slot} format={format} />
-          ))}
+      <div className="relative">
+        <div
+          ref={viewportRef}
+          onScroll={handleScroll}
+          className="overflow-y-auto overscroll-contain"
+          style={{ height: VIEWPORT_HEIGHT }}
+        >
+          <div className="flex flex-col" style={{ gap: ROW_GAP }}>
+            {slots.map((slot, i) => (
+              <BeatRow key={i} beat={slot} format={format} />
+            ))}
+          </div>
         </div>
+        {slots.length > 5 && !done && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-6 items-end justify-center bg-gradient-to-t from-neutral-50 to-transparent text-[10px] text-neutral-400">
+            more below ↓
+          </div>
+        )}
       </div>
     </div>
   );
@@ -290,13 +316,9 @@ function HandCell({
 
   return (
     <div
-      className={`flex flex-1 items-center rounded-md border px-2 font-bold ${
+      className={`flex flex-1 items-center rounded-md border border-neutral-300 bg-white px-2 font-bold ${
         align === "end" ? "justify-end" : "justify-start"
-      } ${
-        isChord
-          ? "border-amber-400 bg-amber-50 text-xs text-amber-900"
-          : "border-neutral-300 bg-white text-sm"
-      }`}
+      } ${isChord ? "text-xs" : "text-sm"}`}
     >
       <span className="truncate">{label}</span>
     </div>

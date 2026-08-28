@@ -16,14 +16,6 @@ interface UsePianoEngineOptions {
   onNotePlayed?: (note: string) => void;
   /** Called every time a note is released. Used by the recording feature. */
   onNoteReleased?: (note: string) => void;
-  /**
-   * When true, no sound is produced and no note is ever considered
-   * "played" -- `onLockedAttempt` fires instead. This is the paywall gate:
-   * a guest or unpaid user can see and press every key, but the very first
-   * press opens the signup/payment modal rather than making a sound.
-   */
-  locked?: boolean;
-  onLockedAttempt?: () => void;
 }
 
 /**
@@ -35,8 +27,6 @@ interface UsePianoEngineOptions {
 export function usePianoEngine({
   onNotePlayed,
   onNoteReleased,
-  locked = false,
-  onLockedAttempt,
 }: UsePianoEngineOptions = {}) {
   const engineRef = useRef<AudioEngine | null>(null);
   const [octave, setOctaveState] = useState(DEFAULT_BASE_OCTAVE);
@@ -62,20 +52,15 @@ export function usePianoEngine({
 
   const playNote = useCallback(
     (note: string) => {
-      if (locked) {
-        onLockedAttempt?.();
-        return;
-      }
       getEngine().playNote(note);
       setActiveNotes((prev) => new Set(prev).add(note));
       onNotePlayed?.(note);
     },
-    [getEngine, onNotePlayed, locked, onLockedAttempt]
+    [getEngine, onNotePlayed]
   );
 
   const releaseNote = useCallback(
     (note: string) => {
-      if (locked) return;
       getEngine().releaseNote(note);
       setActiveNotes((prev) => {
         const next = new Set(prev);
@@ -84,7 +69,7 @@ export function usePianoEngine({
       });
       onNoteReleased?.(note);
     },
-    [getEngine, onNoteReleased, locked]
+    [getEngine, onNoteReleased]
   );
 
   const setSustain = useCallback(

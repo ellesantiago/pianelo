@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 /**
  * Server-side search over admin-curated letter-notes songs. Titles stay
  * searchable by anyone (a free preview surface), but `notes` -- the actual
- * transcription -- is withheld unless the caller owns content_unlock.
+ * transcription -- is withheld unless the caller owns full_access.
  * Deliberately not queried straight from the browser (unlike before this
  * paywall existed): the public RLS read policy on letter_notes would hand
  * the full notes text to the anon key regardless of any UI-side gate.
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     .limit(10);
 
   const user = await getCurrentUser();
-  const unlocked = user?.hasContentUnlock ?? false;
+  const unlocked = user?.hasFullAccess ?? false;
 
   const results = (data ?? []).map((row) => ({
     id: row.id,

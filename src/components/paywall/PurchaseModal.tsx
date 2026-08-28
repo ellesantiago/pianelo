@@ -2,19 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { SignupStep } from "./SignupStep";
-import { PRODUCTS, formatPeso, type ProductKey } from "@/lib/payments/products";
+import { PRODUCTS, formatPeso } from "@/lib/payments/products";
 
 interface PurchaseModalProps {
-  product: ProductKey;
   isLoggedIn: boolean;
   onClose: () => void;
 }
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
+const { label, priceCentavos } = PRODUCTS.full_access;
 
 /**
- * Buys one of the two one-time add-ons (see lib/payments/products.ts).
- * Shows the signup step first for a guest, then the QR Ph payment step.
+ * Buys full access (see lib/payments/products.ts). Shows the signup step
+ * first for a guest, then the QR Ph payment step.
  *
  * Payment uses PayMongo's Payment Intent workflow: our server creates the
  * Intent (secret key), and THIS component creates the Payment Method and
@@ -27,9 +27,8 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
  * (src/app/api/payments/webhook/route.ts) is the only thing that actually
  * marks the purchase paid -- this modal never unlocks anything itself.
  */
-export function PurchaseModal({ product, isLoggedIn, onClose }: PurchaseModalProps) {
+export function PurchaseModal({ isLoggedIn, onClose }: PurchaseModalProps) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
-  const { label } = PRODUCTS[product];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -47,11 +46,11 @@ export function PurchaseModal({ product, isLoggedIn, onClose }: PurchaseModalPro
         </div>
 
         {loggedIn ? (
-          <PaymentStep product={product} />
+          <PaymentStep />
         ) : (
           <SignupStep
             prompt={`Create a free account, then unlock ${label.toLowerCase()} for a one-time ${formatPeso(
-              PRODUCTS[product].priceCentavos
+              priceCentavos
             )} -- no subscription.`}
             onAuthenticated={() => setLoggedIn(true)}
           />
@@ -63,8 +62,7 @@ export function PurchaseModal({ product, isLoggedIn, onClose }: PurchaseModalPro
 
 type PaymentMethod = "qrph";
 
-function PaymentStep({ product }: { product: ProductKey }) {
-  const { priceCentavos } = PRODUCTS[product];
+function PaymentStep() {
   const [submitting, setSubmitting] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrImage, setQrImage] = useState<string | null>(null);
@@ -80,9 +78,7 @@ function PaymentStep({ product }: { product: ProductKey }) {
         const res = await fetch("/api/payments/status");
         if (res.ok) {
           const status = await res.json();
-          const unlocked =
-            product === "content_unlock" ? status.hasContentUnlock : status.hasAdsRemoved;
-          if (unlocked) {
+          if (status.hasFullAccess) {
             clearInterval(interval);
             setConfirmed(true);
             window.location.href = "/";
@@ -102,7 +98,7 @@ function PaymentStep({ product }: { product: ProductKey }) {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [qrImage, confirmed, product]);
+  }, [qrImage, confirmed]);
 
   if (!PUBLIC_KEY) {
     return (
@@ -117,7 +113,7 @@ function PaymentStep({ product }: { product: ProductKey }) {
     const res = await fetch("/api/payments/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product }),
+      body: JSON.stringify({ product: "full_access" }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -155,7 +151,7 @@ function PaymentStep({ product }: { product: ProductKey }) {
           attributes: {
             payment_method: paymentMethodId,
             client_key: clientKey,
-            return_url: `${window.location.origin}/payments/return?product=${product}`,
+            return_url: `${window.location.origin}/payments/return`,
           },
         },
       }),
@@ -197,7 +193,7 @@ function PaymentStep({ product }: { product: ProductKey }) {
       <p className="text-sm text-neutral-500">
         One-time payment of{" "}
         <span className="font-semibold text-neutral-900">{formatPeso(priceCentavos)}</span> unlocks{" "}
-        {PRODUCTS[product].label.toLowerCase()} for good — no subscription, no recurring charge.
+        {label.toLowerCase()} for good — no subscription, no recurring charge.
       </p>
 
       {error && (

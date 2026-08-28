@@ -16,17 +16,17 @@ export default function TermsPage() {
 
       <h2 className="text-lg font-semibold text-neutral-900">Eligibility</h2>
       <p>
-        You must be at least 13 to create an account. Users between 13 and the age of majority may
-        only use Pianelo with a parent or guardian&apos;s consent. No account is required to view the
-        piano; an account and payment are required to play it.
+        The piano itself is free to play for anyone, no account required. You must be at least 13
+        to create an account for full access, below. Users between 13 and the age of majority may
+        only create an account with a parent or guardian&apos;s consent.
       </p>
 
-      <h2 className="text-lg font-semibold text-neutral-900">One-time purchase</h2>
+      <h2 className="text-lg font-semibold text-neutral-900">Full access</h2>
       <p>
-        Full access to the piano is unlocked with a single, one-time payment of ₱99. This is not a
-        subscription: it does not renew or recur, and you will not be charged again for continued
-        access. Payments are processed by PayMongo — Pianelo does not store your full card or
-        e-wallet credentials.
+        Letter notes, local recording, and ad removal are unlocked together with a single,
+        one-time payment, and require a free account. This is not a subscription: payment does
+        not renew or recur, and you will not be charged again for continued access. Payments are
+        processed by PayMongo — Pianelo does not store your full card or e-wallet credentials.
       </p>
 
       <h2 className="text-lg font-semibold text-neutral-900">Single-device access</h2>

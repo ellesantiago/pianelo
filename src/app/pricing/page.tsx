@@ -11,8 +11,8 @@ export default async function PricingPage() {
     <div className="mx-auto max-w-md space-y-6 text-center">
       <h1 className="text-2xl font-bold">Pricing</h1>
       <p className="text-neutral-500">
-        The piano is free, forever, as long as you&apos;re signed in — supported by ads. Two
-        optional one-time add-ons if you want more.
+        The piano is free, forever, for everyone — supported by ads. One optional one-time
+        upgrade if you want more, which requires a free account.
       </p>
 
       <div className="rounded-2xl border border-neutral-200 p-8">
@@ -29,41 +29,22 @@ export default async function PricingPage() {
         >
           Go play
         </Link>
-        <p className="mt-3 text-xs text-neutral-400">Just sign up — no payment needed.</p>
+        <p className="mt-3 text-xs text-neutral-400">No account or payment needed.</p>
       </div>
 
       <div className="rounded-2xl border border-neutral-200 p-8">
-        <p className="text-lg font-semibold">{PRODUCTS.content_unlock.label}</p>
-        <p className="mt-1 text-4xl font-bold">{formatPeso(PRODUCTS.content_unlock.priceCentavos)}</p>
+        <p className="text-lg font-semibold">{PRODUCTS.full_access.label}</p>
+        <p className="mt-1 text-4xl font-bold">{formatPeso(PRODUCTS.full_access.priceCentavos)}</p>
         <p className="mt-1 text-sm text-neutral-500">one-time — not a subscription</p>
         <ul className="mt-6 space-y-2 text-left text-sm text-neutral-700">
           <li>✓ Scrolling letter notes for every song</li>
           <li>✓ Local recording, playback, and export</li>
-        </ul>
-        {user?.hasContentUnlock ? (
-          <p className="mt-6 text-sm font-medium text-neutral-500">You already own this ✓</p>
-        ) : (
-          <PurchaseButton
-            product="content_unlock"
-            isLoggedIn={isLoggedIn}
-            className="mt-6 inline-block w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700"
-          />
-        )}
-        <p className="mt-3 text-xs text-neutral-400">Pay with QR Ph.</p>
-      </div>
-
-      <div className="rounded-2xl border border-neutral-200 p-8">
-        <p className="text-lg font-semibold">{PRODUCTS.remove_ads.label}</p>
-        <p className="mt-1 text-4xl font-bold">{formatPeso(PRODUCTS.remove_ads.priceCentavos)}</p>
-        <p className="mt-1 text-sm text-neutral-500">one-time — not a subscription</p>
-        <ul className="mt-6 space-y-2 text-left text-sm text-neutral-700">
           <li>✓ No ads, anywhere on Pianelo</li>
         </ul>
-        {user?.hasAdsRemoved ? (
+        {user?.hasFullAccess ? (
           <p className="mt-6 text-sm font-medium text-neutral-500">You already own this ✓</p>
         ) : (
           <PurchaseButton
-            product="remove_ads"
             isLoggedIn={isLoggedIn}
             className="mt-6 inline-block w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700"
           />

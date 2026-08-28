@@ -4,10 +4,8 @@ export interface CurrentUser {
   id: string;
   email: string | null;
   isAdmin: boolean;
-  /** Paid the one-time ₱149 for letter notes + recording. */
-  hasContentUnlock: boolean;
-  /** Paid the one-time ₱99 to remove ads. */
-  hasAdsRemoved: boolean;
+  /** Paid the one-time ₱149 for letter notes + recording + no ads. */
+  hasFullAccess: boolean;
 }
 
 /**
@@ -42,7 +40,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     id: user.id,
     email: user.email ?? null,
     isAdmin: profile?.is_admin ?? false,
-    hasContentUnlock: paidProducts.has("content_unlock"),
-    hasAdsRemoved: paidProducts.has("remove_ads"),
+    hasFullAccess: paidProducts.has("full_access"),
   };
 }

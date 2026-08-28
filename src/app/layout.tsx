@@ -68,7 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
         <footer className="border-t border-neutral-200 py-3">
           <div className="mx-auto max-w-4xl px-4">
-            <AdSlot slot="footer" hidden={user?.hasAdsRemoved} />
+            <AdSlot slot="footer" hidden={user?.hasFullAccess} />
             <div className="mt-2 flex flex-col items-center gap-1 text-xs text-neutral-400">
               <div className="flex gap-4">
                 <Link href="/pricing" className="hover:text-neutral-600">

@@ -13,8 +13,5 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({
-    hasContentUnlock: user.hasContentUnlock,
-    hasAdsRemoved: user.hasAdsRemoved,
-  });
+  return NextResponse.json({ hasFullAccess: user.hasFullAccess });
 }

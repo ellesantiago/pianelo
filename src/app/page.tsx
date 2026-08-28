@@ -11,9 +11,8 @@ export default async function HomePage() {
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Play piano, right in your browser.</h1>
         <p className="text-neutral-500">
-          {user
-            ? "Your computer keyboard, mouse, and touch all play real piano notes."
-            : "Free to play, forever — just sign up, no payment needed."}
+          Your computer keyboard, mouse, and touch all play real piano notes — free, forever, no
+          account needed.
         </p>
       </div>
 
@@ -22,9 +21,9 @@ export default async function HomePage() {
       </div>
 
       <div className="flex flex-1 flex-col justify-end space-y-10 pt-10">
-        <GatedPiano isLoggedIn={Boolean(user)} hasContentUnlock={Boolean(user?.hasContentUnlock)} />
+        <GatedPiano isLoggedIn={Boolean(user)} hasFullAccess={Boolean(user?.hasFullAccess)} />
 
-        <AdSlot slot="below-piano" hidden={user?.hasAdsRemoved} />
+        <AdSlot slot="below-piano" hidden={user?.hasFullAccess} />
       </div>
     </div>
   );

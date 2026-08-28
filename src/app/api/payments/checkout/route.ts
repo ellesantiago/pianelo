@@ -5,12 +5,12 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { PRODUCTS, isProductKey } from "@/lib/payments/products";
 
 /**
- * Starts a checkout for one of the two one-time products (see
- * lib/payments/products.ts): creates a PayMongo Payment Intent and records a
- * "pending" purchases row. The browser then creates+attaches a Payment
- * Method directly against PayMongo (see PurchaseModal) -- this route never
- * itself unlocks anything; only the webhook does, once PayMongo confirms
- * the payment actually succeeded.
+ * Starts a checkout for the one-time product (see lib/payments/products.ts):
+ * creates a PayMongo Payment Intent and records a "pending" purchases row.
+ * The browser then creates+attaches a Payment Method directly against
+ * PayMongo (see PurchaseModal) -- this route never itself unlocks anything;
+ * only the webhook does, once PayMongo confirms the payment actually
+ * succeeded.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -24,10 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unknown product." }, { status: 400 });
   }
 
-  const alreadyOwned =
-    (product === "content_unlock" && user.hasContentUnlock) ||
-    (product === "remove_ads" && user.hasAdsRemoved);
-  if (alreadyOwned) {
+  if (user.hasFullAccess) {
     return NextResponse.json({ error: "You already own this." }, { status: 400 });
   }
 

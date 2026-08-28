@@ -37,24 +37,11 @@ export default async function AccountPage() {
             <span>Free, unlimited use</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500">Letter notes + recording</span>
-            {user.hasContentUnlock ? (
+            <span className="text-neutral-500">Full access</span>
+            {user.hasFullAccess ? (
               <span>Unlocked — thank you!</span>
             ) : (
               <PurchaseButton
-                product="content_unlock"
-                isLoggedIn
-                className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-neutral-700"
-              />
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-neutral-500">Ads</span>
-            {user.hasAdsRemoved ? (
-              <span>Removed — thank you!</span>
-            ) : (
-              <PurchaseButton
-                product="remove_ads"
                 isLoggedIn
                 className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-neutral-700"
               />
@@ -79,7 +66,7 @@ export default async function AccountPage() {
         <SignOutButton />
       </div>
 
-      <AdSlot slot="account-rail" hidden={user.hasAdsRemoved} className="w-full sm:w-40" />
+      <AdSlot slot="account-rail" hidden={user.hasFullAccess} className="w-full sm:w-40" />
     </div>
   );
 }

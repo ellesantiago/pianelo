@@ -9,7 +9,7 @@ interface SignupStepProps {
   onAuthenticated: () => void;
 }
 
-/** Shared signup/login switcher, used by both SignupPromptModal and PurchaseModal. */
+/** Shared signup/login switcher, used by PurchaseModal. */
 export function SignupStep({ prompt, onAuthenticated }: SignupStepProps) {
   const [mode, setMode] = useState<"signup" | "login">("signup");
 

@@ -8,7 +8,7 @@ import { formatPeso, PRODUCTS } from "@/lib/payments/products";
 
 interface LetterNotesViewerProps {
   title: string;
-  /** null when the caller hasn't paid for content_unlock -- shows a locked teaser instead. */
+  /** null when the caller hasn't paid for full_access -- shows a locked teaser instead. */
   notes: string | null;
   isLoggedIn?: boolean;
 }
@@ -60,21 +60,17 @@ function LockedTeaser({ title, isLoggedIn }: { title: string; isLoggedIn: boolea
       <h3 className="text-sm font-semibold">{title}</h3>
       <p className="text-sm text-neutral-500">
         Unlock letter notes + recording for a one-time{" "}
-        {formatPeso(PRODUCTS.content_unlock.priceCentavos)} to read along.
+        {formatPeso(PRODUCTS.full_access.priceCentavos)} to read along.
       </p>
       <button
         type="button"
         onClick={() => setPurchaseModalOpen(true)}
         className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-700"
       >
-        Unlock — {formatPeso(PRODUCTS.content_unlock.priceCentavos)}
+        Unlock — {formatPeso(PRODUCTS.full_access.priceCentavos)}
       </button>
       {purchaseModalOpen && (
-        <PurchaseModal
-          product="content_unlock"
-          isLoggedIn={isLoggedIn}
-          onClose={() => setPurchaseModalOpen(false)}
-        />
+        <PurchaseModal isLoggedIn={isLoggedIn} onClose={() => setPurchaseModalOpen(false)} />
       )}
     </div>
   );

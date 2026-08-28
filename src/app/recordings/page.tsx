@@ -21,7 +21,7 @@ export default async function RecordingsPage() {
         <RecordingsList />
       </div>
 
-      <AdSlot slot="recordings-rail" hidden={user.hasAdsRemoved} className="w-full sm:w-40" />
+      <AdSlot slot="recordings-rail" hidden={user.hasFullAccess} className="w-full sm:w-40" />
     </div>
   );
 }

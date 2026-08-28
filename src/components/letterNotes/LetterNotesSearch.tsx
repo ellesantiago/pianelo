@@ -6,7 +6,7 @@ import { LetterNotesViewer } from "./LetterNotesViewer";
 interface SearchResult {
   id: string;
   title: string;
-  /** null when the caller hasn't paid for content_unlock -- see the search route. */
+  /** null when the caller hasn't paid for full_access -- see the search route. */
   notes: string | null;
 }
 
@@ -17,7 +17,7 @@ interface LetterNotesSearchProps {
 /**
  * Search over admin-curated letter-notes songs -- a free preview surface
  * above the piano. Titles are searchable by anyone; viewing a song's actual
- * notes requires the content_unlock purchase (enforced server-side, see
+ * notes requires the full_access purchase (enforced server-side, see
  * app/api/letter-notes/search/route.ts, not just hidden in this UI).
  */
 export function LetterNotesSearch({ isLoggedIn }: LetterNotesSearchProps) {

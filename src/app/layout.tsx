@@ -74,6 +74,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/pricing" className="hover:text-neutral-600">
                   Pricing
                 </Link>
+                <Link href="/about" className="hover:text-neutral-600">
+                  About
+                </Link>
+                <Link href="/contact" className="hover:text-neutral-600">
+                  Contact
+                </Link>
                 <Link href="/terms" className="hover:text-neutral-600">
                   Terms
                 </Link>

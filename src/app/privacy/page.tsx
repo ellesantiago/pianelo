@@ -23,8 +23,9 @@ export default function PrivacyPage() {
       <h2 className="text-lg font-semibold text-neutral-900">Information we collect</h2>
       <p>
         Account info (email) when you sign up, and a single active session token used to enforce
-        one-device-at-a-time login. Our payment provider, PayMongo, collects your payment details
-        directly — we never receive or store your full card or e-wallet credentials.
+        one-device-at-a-time login. Our payment providers, PayMongo and PayPal, collect your
+        payment details directly — we never receive or store your full card, e-wallet, or PayPal
+        account credentials.
       </p>
 
       <h2 className="text-lg font-semibold text-neutral-900">Recordings stay on your device</h2>
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
       </p>
 
       <h2 className="text-lg font-semibold text-neutral-900">Third parties</h2>
-      <p>Supabase (database, auth), PayMongo (payments), and Google AdSense (ads, shown only to users who haven&apos;t purchased full access).</p>
+      <p>Supabase (database, auth), PayMongo and PayPal (payments), and Google AdSense (ads, shown only to users who haven&apos;t purchased full access).</p>
 
       <h2 className="text-lg font-semibold text-neutral-900">Cookies &amp; advertising</h2>
       <p>

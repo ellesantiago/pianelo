@@ -4,7 +4,7 @@ export interface CurrentUser {
   id: string;
   email: string | null;
   isAdmin: boolean;
-  /** Paid the one-time ₱149 for letter notes + recording + no ads. */
+  /** Paid the one-time full-access price (see lib/payments/products.ts) for letter notes + recording + no ads. */
   hasFullAccess: boolean;
 }
 

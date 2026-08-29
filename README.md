@@ -1,14 +1,16 @@
 # Pianelo
 
-A clean, minimalist online piano. Anyone can look at it; playing it requires
-an account and a one-time ₱99 payment (no subscription). One device may be
-logged in at a time. Recordings are saved locally in the browser only.
+A clean, minimalist online piano, free to play for anyone, no account
+needed. A one-time payment (no subscription, price set via env vars --
+see lib/payments/products.ts) unlocks letter notes, local recording, and ad
+removal. One device may be logged in at a time. Recordings are saved
+locally in the browser only.
 
 ## Stack
 
 Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS v4, Supabase
-(Postgres + Auth), PayMongo (one-time payments: card, GCash, Maya), Google
-AdSense.
+(Postgres + Auth), PayMongo (one-time payments: card, GCash, Maya) and PayPal
+(one-time payments, international), Google AdSense.
 
 ## Setup
 
@@ -58,7 +60,24 @@ dashboard shows for your endpoint — it was written from PayMongo's
 documentation plus corroborating sources while their docs site was being
 restructured, not from a single, fully-loaded reference page.
 
-### 3. Google AdSense
+### 3. PayPal
+
+Optional alternative to PayMongo, meant for buyers PayMongo's QRPH method
+can't reach (anyone outside the Philippines).
+
+1. Create a PayPal Developer account at developer.paypal.com and create a
+   **Sandbox** app.
+2. Copy the app's Client ID into `NEXT_PUBLIC_PAYPAL_CLIENT_ID` and its
+   Secret into `PAYPAL_CLIENT_SECRET`. Leave `PAYPAL_ENV=sandbox` (the
+   default) until you're ready to go live, at which point switch it to
+   `live` and swap in a live app's credentials.
+3. Test with a PayPal sandbox test buyer account (Developer Dashboard →
+   Sandbox → Accounts). Unlike PayMongo, there's no webhook to register and
+   no tunnel needed for local testing — payment confirmation happens via a
+   direct, synchronous server-to-server capture call (see
+   `src/lib/payments/paypal.ts`).
+
+### 4. Google AdSense
 
 Optional to start — ad slots render nothing until configured. Once you have
 an AdSense account:
@@ -75,6 +94,6 @@ npm run dev
 
 ## What's intentionally not built
 
-No song library, no PayPal, no OAuth sign-in, no server-side recording
-storage, no admin song/voucher management, no account-deletion grace-period
-flow. See the plan this was built from for the full reasoning.
+No song library, no OAuth sign-in, no server-side recording storage, no
+admin song/voucher management, no account-deletion grace-period flow. See
+the plan this was built from for the full reasoning.

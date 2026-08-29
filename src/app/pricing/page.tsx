@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { PurchaseButton } from "@/components/paywall/PurchaseButton";
-import { PRODUCTS, formatPeso } from "@/lib/payments/products";
+import { PRODUCTS, formatPeso, formatUsd } from "@/lib/payments/products";
+
+const PAYMONGO_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY);
+const PAYPAL_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
+const PAYMENT_METHODS_CAPTION = [PAYMONGO_CONFIGURED && "QR Ph", PAYPAL_CONFIGURED && "PayPal"]
+  .filter(Boolean)
+  .join(" or ");
 
 export const metadata: Metadata = {
   title: "Pricing — Pianelo",
@@ -42,6 +48,11 @@ export default async function PricingPage() {
       <div className="rounded-2xl border border-neutral-200 p-8">
         <p className="text-lg font-semibold">{PRODUCTS.full_access.label}</p>
         <p className="mt-1 text-4xl font-bold">{formatPeso(PRODUCTS.full_access.priceCentavos)}</p>
+        {PAYPAL_CONFIGURED && (
+          <p className="text-xs text-neutral-400">
+            or {formatUsd(PRODUCTS.full_access.priceUsdCents)} via PayPal
+          </p>
+        )}
         <p className="mt-1 text-sm text-neutral-500">one-time — not a subscription</p>
         <ul className="mt-6 space-y-2 text-left text-sm text-neutral-700">
           <li>✓ Scrolling letter notes for every song</li>
@@ -56,7 +67,9 @@ export default async function PricingPage() {
             className="mt-6 inline-block w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700"
           />
         )}
-        <p className="mt-3 text-xs text-neutral-400">Pay with QR Ph.</p>
+        {PAYMENT_METHODS_CAPTION && (
+          <p className="mt-3 text-xs text-neutral-400">Pay via {PAYMENT_METHODS_CAPTION}.</p>
+        )}
       </div>
     </div>
   );

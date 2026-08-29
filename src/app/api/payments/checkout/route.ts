@@ -28,12 +28,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You already own this." }, { status: 400 });
   }
 
-  const { priceCentavos, paymongoDescription } = PRODUCTS[product];
+  const { priceCentavos, checkoutDescription } = PRODUCTS[product];
 
   try {
     const intent = await createPaymentIntent({
       amount: priceCentavos,
-      description: paymongoDescription,
+      description: checkoutDescription,
       metadata: { pianelo_user_id: user.id, product },
     });
 

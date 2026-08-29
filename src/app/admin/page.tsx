@@ -21,12 +21,20 @@ export default async function AdminPage() {
     service.from("profiles").select("*", { count: "exact", head: true }),
     service.from("purchases").select("user_id", { count: "exact", head: true }).eq("status", "paid"),
     service.from("active_sessions").select("*", { count: "exact", head: true }),
-    service.from("purchases").select("amount, status"),
+    service.from("purchases").select("amount, currency, status"),
   ]);
 
-  const revenue = (purchases ?? [])
-    .filter((row) => row.status === "paid")
-    .reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+  // Revenue is split by currency -- PayMongo purchases are PHP, PayPal
+  // purchases are USD (see lib/payments/products.ts), and summing the two
+  // raw amounts together would produce a meaningless total.
+  const paidPurchases = (purchases ?? []).filter((row) => row.status === "paid");
+  const revenueByCurrency = (currency: string) =>
+    paidPurchases
+      .filter((row) => row.currency === currency)
+      .reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+
+  const revenuePhp = revenueByCurrency("PHP");
+  const revenueUsd = revenueByCurrency("USD");
 
   const stats: { label: string; value: number | string }[] = [
     { label: "Total users", value: totalUsers ?? 0 },
@@ -35,7 +43,8 @@ export default async function AdminPage() {
       label: "Conversion rate",
       value: totalUsers ? `${(((paidUsers ?? 0) / totalUsers) * 100).toFixed(1)}%` : "—",
     },
-    { label: "Revenue (₱)", value: revenue.toFixed(2) },
+    { label: "Revenue (₱)", value: revenuePhp.toFixed(2) },
+    ...(revenueUsd > 0 ? [{ label: "Revenue ($)", value: revenueUsd.toFixed(2) }] : []),
     { label: "Active sessions", value: activeSessions ?? 0 },
   ];
 

@@ -2,9 +2,10 @@
 
 // Reserved ad placement. Renders nothing until both the AdSense publisher
 // ID and this specific slot's unit ID are configured (see .env.example),
-// and never for a user who has paid the one-time ₱99. Placements are chosen
-// to never sit over the piano/controls, mid-recording, or anywhere a stray
-// tap could hit an ad instead of a key:
+// and never for a user who has paid the one-time full-access price (see
+// lib/payments/products.ts). Placements are chosen to never sit over the
+// piano/controls, mid-recording, or anywhere a stray tap could hit an ad
+// instead of a key:
 //   - "below-piano"      -- under the piano on the homepage
 //   - "footer"           -- site footer, every page
 //   - "recordings-rail"  -- side rail on /recordings

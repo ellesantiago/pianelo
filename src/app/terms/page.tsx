@@ -32,7 +32,8 @@ export default function TermsPage() {
         Letter notes, local recording, and ad removal are unlocked together with a single,
         one-time payment, and require a free account. This is not a subscription: payment does
         not renew or recur, and you will not be charged again for continued access. Payments are
-        processed by PayMongo — Pianelo does not store your full card or e-wallet credentials.
+        processed by PayMongo or PayPal — Pianelo does not store your full card, e-wallet, or
+        PayPal account credentials.
       </p>
 
       <h2 className="text-lg font-semibold text-neutral-900">Single-device access</h2>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { SignupStep } from "./SignupStep";
-import { PRODUCTS, formatPeso } from "@/lib/payments/products";
+import { PayPalButton } from "./PayPalButton";
+import { PRODUCTS, formatPeso, formatUsd } from "@/lib/payments/products";
 
 interface PurchaseModalProps {
   isLoggedIn: boolean;
@@ -10,22 +11,27 @@ interface PurchaseModalProps {
 }
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY;
-const { label, priceCentavos } = PRODUCTS.full_access;
+const PAYPAL_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
+const { label, priceCentavos, priceUsdCents } = PRODUCTS.full_access;
 
 /**
  * Buys full access (see lib/payments/products.ts). Shows the signup step
- * first for a guest, then the QR Ph payment step.
+ * first for a guest, then the payment step, which offers whichever of
+ * QR Ph (PayMongo) / PayPal has its keys configured.
  *
- * Payment uses PayMongo's Payment Intent workflow: our server creates the
- * Intent (secret key), and THIS component creates the Payment Method and
- * attaches it directly from the browser using the PUBLIC key. QRPH is the
- * only method wired up -- it's the only one activated on this PayMongo
- * account without a registered business. Unlike e-wallets, QRPH doesn't
- * redirect: the attach response carries a base64 QR image
- * (next_action.code.image_url) that we render inline and poll against while
- * the customer scans it. PayMongo's own webhook
- * (src/app/api/payments/webhook/route.ts) is the only thing that actually
- * marks the purchase paid -- this modal never unlocks anything itself.
+ * PayMongo/QRPH: our server creates a Payment Intent (secret key), and THIS
+ * component creates the Payment Method and attaches it directly from the
+ * browser using the PUBLIC key. Unlike e-wallets, QRPH doesn't redirect: the
+ * attach response carries a base64 QR image (next_action.code.image_url)
+ * that we render inline and poll against while the customer scans it.
+ * PayMongo's own webhook (src/app/api/payments/webhook/route.ts) is the only
+ * thing that actually marks that purchase paid.
+ *
+ * PayPal: handled entirely by PayPalButton, which calls our
+ * create-order/capture-order routes -- see that file and
+ * src/lib/payments/paypal.ts for how confirmation works there (no webhook).
+ *
+ * Either way, this modal never unlocks anything itself.
  */
 export function PurchaseModal({ isLoggedIn, onClose }: PurchaseModalProps) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
@@ -49,9 +55,7 @@ export function PurchaseModal({ isLoggedIn, onClose }: PurchaseModalProps) {
           <PaymentStep />
         ) : (
           <SignupStep
-            prompt={`Create a free account, then unlock ${label.toLowerCase()} for a one-time ${formatPeso(
-              priceCentavos
-            )} -- no subscription.`}
+            prompt={`Create a free account, then unlock ${label.toLowerCase()} with a one-time payment -- no subscription.`}
             onAuthenticated={() => setLoggedIn(true)}
           />
         )}
@@ -100,10 +104,10 @@ function PaymentStep() {
     return () => clearInterval(interval);
   }, [qrImage, confirmed]);
 
-  if (!PUBLIC_KEY) {
+  if (!PUBLIC_KEY && !PAYPAL_CONFIGURED) {
     return (
       <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-        Payments aren&apos;t connected yet — add your PayMongo keys to{" "}
+        Payments aren&apos;t connected yet — add your PayMongo or PayPal keys to{" "}
         <code className="rounded bg-black/5 px-1">.env.local</code> (see the README).
       </p>
     );
@@ -191,9 +195,8 @@ function PaymentStep() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-neutral-500">
-        One-time payment of{" "}
-        <span className="font-semibold text-neutral-900">{formatPeso(priceCentavos)}</span> unlocks{" "}
-        {label.toLowerCase()} for good — no subscription, no recurring charge.
+        One-time payment unlocks {label.toLowerCase()} for good — no subscription, no recurring
+        charges.
       </p>
 
       {error && (
@@ -227,18 +230,53 @@ function PaymentStep() {
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={payWithQrph}
-            disabled={submitting !== null}
-            className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
-          >
-            {submitting === "qrph" ? "Generating QR…" : `Pay ${formatPeso(priceCentavos)} with QR Ph`}
-          </button>
-          <p className="text-center text-xs text-neutral-500">
-            Scan with any GCash, Maya, or bank app that supports QR Ph.
-          </p>
+        // Each payment method gets its own bordered card with its own price
+        // shown right next to its name -- QRPH and PayPal charge different
+        // amounts in different currencies, so keeping "which price goes with
+        // which method" unambiguous matters more here than it would for a
+        // single-currency checkout.
+        <div className="space-y-3">
+          {PUBLIC_KEY && (
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-sm font-medium text-neutral-900">QR Ph</span>
+                <span className="text-sm font-semibold text-neutral-900">
+                  {formatPeso(priceCentavos)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={payWithQrph}
+                disabled={submitting !== null}
+                className="w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {submitting === "qrph" ? "Generating QR…" : "Pay with QR Ph"}
+              </button>
+              <p className="mt-2 text-center text-xs text-neutral-500">
+                Scan with any GCash, Maya, or bank app that supports QR Ph.
+              </p>
+            </div>
+          )}
+
+          {PUBLIC_KEY && PAYPAL_CONFIGURED && (
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-neutral-200" />
+              <span className="text-xs font-medium tracking-wide text-neutral-400">or</span>
+              <span className="h-px flex-1 bg-neutral-200" />
+            </div>
+          )}
+
+          {PAYPAL_CONFIGURED && (
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-sm font-medium text-neutral-900">PayPal</span>
+                <span className="text-sm font-semibold text-neutral-900">
+                  {formatUsd(priceUsdCents)}
+                </span>
+              </div>
+              <PayPalButton onError={setError} />
+            </div>
+          )}
         </div>
       )}
     </div>

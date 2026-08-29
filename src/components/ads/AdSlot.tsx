@@ -9,7 +9,7 @@
 //   - "footer"           -- site footer, every page
 //   - "recordings-rail"  -- side rail on /recordings
 //   - "account-rail"     -- side rail on /account
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
@@ -31,22 +31,26 @@ export function AdSlot({ slot, hidden, className }: AdSlotProps) {
   const pushed = useRef(false);
   const show = !hidden && Boolean(ADSENSE_CLIENT_ID) && Boolean(slotId);
 
-  // AdSense mutates the <ins> tag's DOM directly once it loads, so the push
-  // must happen client-side only, after hydration -- doing it via an inline
-  // <script> tag doesn't work here since scripts rendered by a React
-  // component are never executed on the client (only real <script> tags
-  // from the initial SSR HTML run).
+  // Ad-blocker extensions target elements with class="adsbygoogle" and strip
+  // them from the DOM before React hydrates, which desyncs the server- and
+  // client-rendered trees. Gating this on a mounted flag means the ad markup
+  // is absent from both the SSR HTML and the first client render -- it's
+  // only added in a later, post-hydration update, so there's nothing for an
+  // extension to remove before hydration completes.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
-    if (!show || pushed.current) return;
+    if (!mounted || !show || pushed.current) return;
     pushed.current = true;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
       // AdSense not available (blocked, offline, etc.) -- fail silently.
     }
-  }, [show]);
+  }, [mounted, show]);
 
-  if (!show) return null;
+  if (!mounted || !show) return null;
 
   return (
     <div className={`flex justify-center overflow-hidden ${className ?? ""}`}>
@@ -57,7 +61,6 @@ export function AdSlot({ slot, hidden, className }: AdSlotProps) {
         data-ad-slot={slotId}
         data-ad-format="auto"
         data-full-width-responsive="true"
-        suppressHydrationWarning
       />
     </div>
   );

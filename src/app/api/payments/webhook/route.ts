@@ -3,23 +3,16 @@ import { NextResponse } from "next/server";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 /**
- * PayMongo webhook: the sole source of truth for marking a purchase paid.
- * Never trust the browser's "payment successful" redirect on its own.
- * Product-agnostic -- it just flips whichever purchases row matches the
- * payment intent id (there's currently only one product, full_access, but
- * this route doesn't need to know that).
+ * PayMongo webhook: the sole source of truth for marking a purchase paid --
+ * never trust the browser's own "payment successful" redirect. Product-
+ * agnostic; just flips whichever purchases row matches the intent id.
  *
- * Signature format (Paymongo-Signature header): "t=<unix_ts>,te=<test_sig>,
- * li=<live_sig>", where each signature is HMAC-SHA256(`${t}.${raw_body}`,
- * webhook_secret) hex-encoded. Only one of te/li will actually match your
- * configured secret (whichever mode your endpoint was registered in).
+ * Signature (Paymongo-Signature header): "t=<unix_ts>,te=<test_sig>,
+ * li=<live_sig>", each HMAC-SHA256(`${t}.${raw_body}`, webhook_secret)
+ * hex-encoded; only one of te/li matches your endpoint's mode.
  *
- * NOTE: PayMongo's docs site was mid-restructuring when this was written and
- * the canonical page for this exact format was unreachable -- this was
- * corroborated from PayMongo's own best-practices doc plus community
- * integration reports, not read verbatim from the primary reference. Before
- * relying on this in production, compare it against the verification
- * snippet PayMongo's dashboard shows when you register the webhook.
+ * Re-verify this against the exact snippet PayMongo's dashboard shows for
+ * your endpoint before relying on it in production.
  */
 export async function POST(request: Request) {
   const rawBody = await request.text();

@@ -16,22 +16,11 @@ const { label, priceCentavos, priceUsdCents } = PRODUCTS.full_access;
 
 /**
  * Buys full access (see lib/payments/products.ts). Shows the signup step
- * first for a guest, then the payment step, which offers whichever of
- * QR Ph (PayMongo) / PayPal has its keys configured.
- *
- * PayMongo/QRPH: our server creates a Payment Intent (secret key), and THIS
- * component creates the Payment Method and attaches it directly from the
- * browser using the PUBLIC key. Unlike e-wallets, QRPH doesn't redirect: the
- * attach response carries a base64 QR image (next_action.code.image_url)
- * that we render inline and poll against while the customer scans it.
- * PayMongo's own webhook (src/app/api/payments/webhook/route.ts) is the only
- * thing that actually marks that purchase paid.
- *
- * PayPal: handled entirely by PayPalButton, which calls our
- * create-order/capture-order routes -- see that file and
- * src/lib/payments/paypal.ts for how confirmation works there (no webhook).
- *
- * Either way, this modal never unlocks anything itself.
+ * first for a guest, then the payment step -- QR Ph (PayMongo) and/or
+ * PayPal, whichever has its keys configured. Neither path unlocks
+ * anything itself: PayMongo's webhook and PayPal's capture-order route
+ * are the only things that mark a purchase paid (see PayPalButton and
+ * src/lib/payments/paypal.ts for the PayPal side).
  */
 export function PurchaseModal({ isLoggedIn, onClose }: PurchaseModalProps) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
@@ -230,11 +219,8 @@ function PaymentStep() {
           </button>
         </div>
       ) : (
-        // Each payment method gets its own bordered card with its own price
-        // shown right next to its name -- QRPH and PayPal charge different
-        // amounts in different currencies, so keeping "which price goes with
-        // which method" unambiguous matters more here than it would for a
-        // single-currency checkout.
+        // Each method gets its own card with its own price next to its name --
+        // QRPH and PayPal charge different amounts in different currencies.
         <div className="space-y-3">
           {PUBLIC_KEY && (
             <div className="rounded-xl border border-neutral-200 p-3">

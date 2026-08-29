@@ -13,7 +13,7 @@ interface RecordButtonProps {
   onDismissPending: () => void;
 }
 
-/** Record / Stop / Save-or-discard, for the local-only recording feature (Plan-carryover Section 22-23). */
+/** Record / Stop / Save-or-discard, for the local-only recording feature. */
 export function RecordButton({
   isRecording,
   pendingEvents,

@@ -102,5 +102,4 @@ npm run dev
 ## What's intentionally not built
 
 No song library, no OAuth sign-in, no server-side recording storage, no
-admin song/voucher management, no account-deletion grace-period flow. See
-the plan this was built from for the full reasoning.
+admin song/voucher management, no account-deletion grace-period flow.

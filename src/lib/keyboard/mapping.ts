@@ -1,32 +1,9 @@
-// Computer-keyboard <-> musical-note mapping.
-//
-// The keyboard covers three octaves at once, full chromatic (every black
-// key has a letter/number too), so the player rarely needs the octave
-// shift controls (ArrowLeft/ArrowRight) to reach a note. This exact
-// key-per-note table is a fixed, external reference (not derived from any
-// physical-keyboard heuristic) -- reproduce it verbatim rather than
-// re-deriving it:
-//
-//   Octave 3 (one below the default base octave):
-//     C3=Q  C#3=`  D3=W  D#3=1  E3=E  F3=R  F#3=2
-//     G3=T  G#3=3  A3=G  A#3=4  B3=F
-//   Octave 4 (DEFAULT_BASE_OCTAVE):
-//     C4=D  C#4=5  D4=S  D#4=6  E4=V  F4=B  F#4=7
-//     G4=N  G#4=8  A4=L  A#4=9  B4=K
-//   Octave 5 (one above the default base octave):
-//     C5=J  C#5=0  D5=H  D#5=-  E5=Y  F5=U  F#5==
-//     G5=I  G#5=[  A5=O  A#5=]  B5=P
-//
-// getOctaveMapping/noteForSemitone below reuse this same 36-key table for
-// any other octave window too (e.g. shifting the live piano up or down via
-// ArrowLeft/ArrowRight) -- same keys, shifted by whole octaves, exactly as
-// they already do for octaves 3-5 above.
-//
-// The visual piano itself still renders every note across the full
-// MIN_OCTAVE..MAX_OCTAVE range (see getFullKeyboardKeys below) and every key
-// is always playable by click/tap -- which also always shows the correct
-// label for whichever physical key plays it, so none of this needs to
-// visually line up with real keyboard rows to be usable.
+// Computer-keyboard <-> musical-note mapping. KEY_LAYOUT is a fixed,
+// external reference table (full chromatic across three octaves) --
+// reproduce it verbatim rather than re-deriving it. getOctaveMapping
+// reuses the same 36-key table shifted by whole octaves for any octave
+// window. The on-screen piano still renders the full
+// MIN_OCTAVE..MAX_OCTAVE range regardless (see getFullKeyboardKeys).
 
 const NOTE_NAMES = [
   "C",
@@ -195,12 +172,8 @@ export function getFullKeyboardKeys(
   return keys;
 }
 
-// ---------------------------------------------------------------------------
-// Below this point: helpers specific to the letter-notes feature (converting
-// an admin-authored note token to its keyboard letter). Kept here rather
-// than under lib/letterNotes/ because both are fundamentally "note name <->
-// key" lookups -- the same domain as everything above.
-// ---------------------------------------------------------------------------
+// Below: letter-notes-specific helpers (note token -> keyboard letter).
+// Kept here since both are "note name <-> key" lookups.
 
 const FLAT_TO_SHARP: Record<string, string> = {
   Db: "C#",
@@ -225,25 +198,15 @@ for (const entry of KEY_LAYOUT) {
   SEMITONE_TO_KEY[entry.semitone] = entry.key.toUpperCase();
 }
 
-/** KEY_LAYOUT only spans octaves 3-5 -- a token outside that range reuses
- * whichever boundary octave (3 below, 5 above) is nearest, keeping the same
- * pitch class's key (e.g. "D2" reuses "D3"'s key, "D1" also reuses "D3"'s
- * key, not a different one -- there's no data past the boundary to do
- * anything more specific with). Clamping the octave, not wrapping the
- * pattern, matches how the table itself was specified: verified against
- * "D2" -> the same key as "D3" ("W"), not "D5" (a 3-octave wrap would have
- * given "D2" and "D5" the same key, which is wrong). */
+/** KEY_LAYOUT only spans octaves 3-5 -- clamp (don't wrap) to the nearest
+ * boundary octave for anything outside that range. */
 function clampToTableOctave(octave: number): number {
   return Math.min(5, Math.max(3, octave));
 }
 
-/**
- * Converts a letter-notes token to its keyboard letter, e.g. "C4" -> "D".
- * A token with no octave (older, octave-less letter-notes content) or one
- * that doesn't parse as a note at all is returned unchanged -- there's no
- * single correct key for a bare pitch class. Every other token always
- * converts to some key, even outside octaves 3-5 (see clampToTableOctave).
- */
+/** Converts a letter-notes token to its keyboard letter, e.g. "C4" -> "D".
+ * A token with no octave or that doesn't parse as a note is returned
+ * unchanged -- there's no single correct key for a bare pitch class. */
 export function noteToLetterLabel(token: string): string {
   const match = FULL_NOTE_PATTERN.exec(token.trim());
   if (!match) return token;
@@ -261,19 +224,12 @@ function absoluteSemitone(pitchClass: string, octave: number): number {
   return octave * 12 + NOTE_NAMES.indexOf(pitchClass as (typeof NOTE_NAMES)[number]);
 }
 
-// Fallback left/right pivot for beats saved without an explicit hand split
-// (see parseBeats.ts) -- the fixed KEY_LAYOUT table above has no inherent
-// notion of "hand," so this just keeps the old pitch-based guess (A4 and
-// above is the right hand) as a best-effort default for that legacy case.
+// Fallback left/right pivot for beats with no explicit hand split (see
+// parseBeats.ts): A4 and above is the right hand.
 const LEFT_RIGHT_PIVOT = absoluteSemitone("A", DEFAULT_BASE_OCTAVE);
 
-/**
- * Whether a letter-notes token falls on the keyboard's left-hand side (C4-G4
- * and below) rather than the right (A4 and above) -- for splitting a beat's
- * simultaneous notes into a two-hand display when the beat has no explicit
- * hand split of its own (see parseBeats.ts). A token with no parseable
- * octave has no pitch to compare, so it defaults to the left column.
- */
+/** Whether a token falls on the left-hand side (below A4) for the two-hand
+ * display fallback. No parseable octave defaults to the left column. */
 export function isLeftHandNote(token: string): boolean {
   const match = FULL_NOTE_PATTERN.exec(token.trim());
   if (!match) return true;

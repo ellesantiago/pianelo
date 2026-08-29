@@ -38,18 +38,12 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Exempt /api/session/register: that route is what ISSUES the session
-  // token cookie right after a fresh login, so at the moment it runs there
-  // is legitimately no matching cookie yet -- checking here would lock the
-  // user out of the very request that logs them in.
+  // Exempt /api/session/register: it ISSUES the cookie right after login,
+  // so there's legitimately no matching cookie yet when it runs.
   const isSessionRegisterRoute = request.nextUrl.pathname.startsWith("/api/session/register");
 
-  // Exempt /auth/callback: a password-recovery (or email-confirmation) link
-  // click may land in a browser that still holds an unrelated, older session
-  // cookie. That cookie has nothing to do with the recovery code this
-  // request is about to exchange, so checking it here can bounce a
-  // legitimate recovery attempt to /login before it ever reaches the page
-  // that lets the user set a new password.
+  // Exempt /auth/callback: a recovery-link click may carry an unrelated,
+  // older session cookie that has nothing to do with the code being exchanged.
   const isAuthCallbackRoute = request.nextUrl.pathname.startsWith("/auth/callback");
 
   if (user && !isSessionRegisterRoute && !isAuthCallbackRoute) {

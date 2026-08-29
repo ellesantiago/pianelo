@@ -1,21 +1,16 @@
 // Renders a recorded event log through the same synth voice logic as live
-// playback, but offline (no real-time audio output), producing a PCM
-// AudioBuffer suitable for encoding to a file. See AudioEngine's `atTime`
-// params and BaseAudioContext-typed `ctx` -- both exist specifically to let
-// this module drive the engine deterministically instead of in real time.
+// playback, but offline, producing a PCM AudioBuffer for file export.
+// AudioEngine's `atTime` params and BaseAudioContext-typed `ctx` exist to
+// let this module drive it deterministically instead of in real time.
 
 import { AudioEngine } from "./AudioEngine";
 import type { RecordedNoteEvent } from "@/types/music";
 
 const TAIL_PADDING_SECONDS = 0.8; // covers the ~0.72s release curve so it isn't hard-cut
 
-/**
- * A recording can end with a key still held down (GatedPiano.stopRecording
- * never force-releases held keys) -- left unclosed, that voice's oscillator
- * never stops and instead plays at sustain level until the buffer's fixed
- * length runs out, ending in a hard sample-boundary click. This synthesizes
- * an "up" event for every note still down at the end of the log.
- */
+/** A recording can end with a key still held down -- left unclosed, that
+ * voice plays at sustain level until the buffer ends in a hard click.
+ * Synthesizes an "up" event for every note still down at the end. */
 function closeDanglingNotes(sortedEvents: RecordedNoteEvent[]): RecordedNoteEvent[] {
   if (sortedEvents.length === 0) return sortedEvents;
 

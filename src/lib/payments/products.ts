@@ -5,10 +5,8 @@
 const DEFAULT_FULL_ACCESS_PRICE_PESOS = 149;
 const DEFAULT_FULL_ACCESS_PRICE_USD = 3;
 
-// NEXT_PUBLIC_ so the same price shows client-side (pricing page, purchase
-// modal) and server-side (checkout/create-order routes, which create the
-// PayMongo/PayPal charge for this exact amount) without drifting out of
-// sync. Shared between both currencies -- it's just "major units to cents".
+// NEXT_PUBLIC_ so the same price shows client- and server-side (the
+// checkout/create-order routes charge this exact amount) without drifting.
 function centsFromEnv(envValue: string | undefined, fallbackUnits: number): number {
   const units = Number(envValue);
   return Number.isFinite(units) && units > 0 ? Math.round(units * 100) : fallbackUnits * 100;

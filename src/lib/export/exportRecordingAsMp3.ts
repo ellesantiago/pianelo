@@ -48,10 +48,8 @@ export async function exportRecordingAsMp3(recording: StoredRecording): Promise<
   const pcm16 = floatTo16BitPCM(audioBuffer.getChannelData(0));
   const mp3Bytes = await encodeMp3(pcm16, audioBuffer.sampleRate);
 
-  // mp3Bytes crosses a postMessage structured-clone boundary, which widens
-  // its buffer's type to ArrayBufferLike (ArrayBuffer | SharedArrayBuffer) --
-  // it's always a plain ArrayBuffer at runtime (built via `new Uint8Array(n)`
-  // in the worker), just not something BlobPart's stricter type reflects.
+  // postMessage widens the buffer's type to ArrayBufferLike; it's always a
+  // plain ArrayBuffer at runtime, just not what BlobPart's type reflects.
   const blob = new Blob([mp3Bytes as BlobPart], { type: "audio/mpeg" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -68,10 +68,8 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
     }
 
     if (mode === "signup" && !data.session) {
-      // Supabase's signUp() never errors for an email that's already
-      // registered -- it silently returns a user with no identities
-      // instead, to avoid leaking which emails have accounts. That's the
-      // only way to tell the two cases apart here.
+      // signUp() never errors for an already-registered email -- it
+      // silently returns a user with no identities instead.
       if (data.user && data.user.identities?.length === 0) {
         setStatus({
           text: "An account with this email already exists. Try logging in instead.",
@@ -81,28 +79,19 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
         return;
       }
 
-      // Email confirmation is required -- there's no session yet, so there's
-      // nothing to register as an active device until the user clicks the
-      // confirmation link (handled by /auth/callback, which registers the
-      // session then).
       setStatus({ text: "Check your email to confirm your account.", tone: "info" });
       setSubmitting(false);
       return;
     }
 
-    // Logged in -- register this device as the one active session (Section:
-    // single-device enforcement) BEFORE navigating, so the very next request
-    // (the full navigation below) already carries a matching session-token
-    // cookie and proxy.ts doesn't immediately sign it back out.
+    // Register this device as the active session before navigating, so the
+    // next request already carries a matching cookie (see proxy.ts).
     await fetch("/api/session/register", { method: "POST" });
 
     onAuthenticated?.();
 
-    // Full navigation (not router.push) guarantees the server-rendered nav
-    // picks up the new session -- router.push can still serve an
-    // already-prefetched, pre-login copy of "/" from the Router Cache even
-    // after router.refresh(), since refresh() only busts the CURRENT
-    // route's cache entry, not other routes' prefetched ones.
+    // Full navigation, not router.push -- avoids serving a stale
+    // pre-login "/" from the Router Cache.
     window.location.href = "/";
   };
 

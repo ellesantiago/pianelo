@@ -1,16 +1,9 @@
-// Server-only PayMongo client for the two one-time products (see
-// lib/payments/products.ts) via the Payment Intent workflow: QRPH only --
-// the only method activated on this PayMongo account without a registered
-// business. Verified against PayMongo's current docs (docs.paymongo.com) at
-// build time:
-//   - POST /v1/payment_intents (secret key) creates the intent; amount is in
-//     centavos, currency "PHP", payment_method_allowed lists the types we
-//     accept.
-//   - The browser then creates a Payment Method with the PUBLIC key
-//     (src/components/paywall/PurchaseModal.tsx) and attaches it to this
-//     intent -- card data never reaches this server, only PayMongo's API.
-//   - The webhook (src/app/api/payments/webhook/route.ts) is the only thing
-//     that ever marks a purchase "paid".
+// Server-only PayMongo client for full_access (see lib/payments/products.ts)
+// via the Payment Intent workflow: QRPH only -- the only method activated
+// on this account without a registered business. This server creates the
+// intent; the browser creates+attaches a Payment Method with the PUBLIC key
+// (PurchaseModal.tsx), so card data never reaches this server. The webhook
+// (api/payments/webhook/route.ts) is the only thing that marks it "paid".
 
 const PAYMONGO_API = "https://api.paymongo.com/v1";
 

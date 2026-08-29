@@ -14,10 +14,8 @@ interface LetterNotesViewerProps {
 }
 
 type Speed = "slow" | "medium" | "fast";
-// Whether each slot shows the computer-keyboard letter that plays it, or the
-// plain note name -- a chord like "G2+D2" only makes sense in the latter,
-// since G2/D2 may fall outside the keyboard's mapped octave range and have
-// no letter of their own.
+// "cde" is needed for chords like "G2+D2" whose notes may fall outside the
+// keyboard's mapped range and have no letter of their own.
 type Format = "letters" | "cde";
 
 const SPEED_PX_PER_SEC: Record<Speed, number> = {
@@ -27,23 +25,18 @@ const SPEED_PX_PER_SEC: Record<Speed, number> = {
 };
 const SPEED_OPTIONS: Speed[] = ["slow", "medium", "fast"];
 
-// Fixed regardless of chord size, so the scroll offset maps to a row index
-// by pure arithmetic (no DOM measurement needed to find "what's currently
-// at the playhead"). Row width is left flexible -- it's the height (the
-// scroll axis) that has to stay constant, not the two hand-columns' width.
+// Fixed row height so scroll offset maps to a row index by pure
+// arithmetic -- no DOM measurement needed to find the current playhead row.
 const ROW_HEIGHT = 48;
 const ROW_GAP = 8;
 const ROW_STRIDE = ROW_HEIGHT + ROW_GAP;
 const VIEWPORT_HEIGHT = 5 * ROW_STRIDE - ROW_GAP;
 
 /**
- * Visual-only reading aid: scrolls the song's note letters from start to end
- * once, at a user-selectable speed and pausable at any point. No audio --
- * the user plays the keys themselves while following along.
- *
- * Split into a thin wrapper + the actual viewer (rather than an early return
- * inside one component) so a locked song never runs the scroll-animation
- * hooks below with an empty `notes` string.
+ * Visual-only reading aid: auto-scrolls the song's notes at a selectable
+ * speed, pausable. No audio -- the reader plays the keys themselves.
+ * Split into a wrapper + the real viewer so a locked song never runs the
+ * scroll-animation hooks with an empty `notes` string.
  */
 export function LetterNotesViewer({ title, notes, isLoggedIn }: LetterNotesViewerProps) {
   if (notes === null) {
@@ -129,9 +122,7 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
     frameRef.current = requestAnimationFrame(step);
   };
 
-  // Resets lastTimeRef so the next frame's dt doesn't include time spent
-  // paused (or before the very first frame), which would otherwise jump the
-  // scroll position forward.
+  // Resets lastTimeRef so the next frame's dt doesn't include paused time.
   const startLoop = () => {
     if (frameRef.current != null) return;
     lastTimeRef.current = null;
@@ -144,18 +135,13 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
     frameRef.current = null;
   };
 
-  // Starts paused -- the song opens sitting at the top, letting the reader
-  // scroll through it by hand before committing to Play. Still need the
-  // cleanup so a mid-playback unmount (parent keys this by song id -- see
-  // LetterNotesSearch) cancels any pending frame.
+  // Starts paused so the reader can scroll by hand before pressing Play.
+  // Cleanup cancels any pending frame on a mid-playback unmount.
   useEffect(() => {
     return () => stopLoop();
   }, []);
 
-  // While paused, the viewport is a plain scrollable element (see the
-  // `onScroll` handler below) -- syncing from its live scrollTop here means
-  // resuming Play continues from wherever the reader scrolled to, rather
-  // than snapping back to the last auto-scrolled position.
+  // Resuming Play continues from wherever the reader manually scrolled to.
   const togglePlaying = () => {
     if (playing) {
       stopLoop();
@@ -176,9 +162,7 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
     startLoop();
   };
 
-  // Manual scrolling only takes effect while paused -- during playback the
-  // animation loop owns scrollTop every frame, so a scroll event fired by
-  // our own `applyPosition` write is ignored here rather than fighting it.
+  // Ignored during playback -- the animation loop owns scrollTop every frame.
   const handleScroll = () => {
     if (playing) return;
     const viewport = viewportRef.current;
@@ -263,12 +247,8 @@ function UnlockedViewer({ title, notes }: { title: string; notes: string }) {
   );
 }
 
-// Splits one beat's simultaneous notes across the two hand columns, so a
-// beat that needs both hands at once shows both side by side in the same
-// row, and a beat only one hand plays leaves the other column blank. Prefers
-// the beat's own explicit left/right split (see parseBeats.ts) -- how the
-// admin actually typed it -- over guessing from pitch; the guess is only a
-// fallback for beats saved before that split existed.
+// Prefers the beat's own explicit left/right split (see parseBeats.ts) over
+// guessing from pitch, which is only a fallback for pre-split content.
 function splitByHand(beat: Beat): { left: string[]; right: string[] } {
   if (beat.left !== undefined || beat.right !== undefined) {
     return { left: beat.left ?? [], right: beat.right ?? [] };

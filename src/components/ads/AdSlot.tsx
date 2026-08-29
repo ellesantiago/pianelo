@@ -1,15 +1,9 @@
 "use client";
 
 // Reserved ad placement. Renders nothing until both the AdSense publisher
-// ID and this specific slot's unit ID are configured (see .env.example),
-// and never for a user who has paid the one-time full-access price (see
-// lib/payments/products.ts). Placements are chosen to never sit over the
-// piano/controls, mid-recording, or anywhere a stray tap could hit an ad
-// instead of a key:
-//   - "below-piano"      -- under the piano on the homepage
-//   - "footer"           -- site footer, every page
-//   - "recordings-rail"  -- side rail on /recordings
-//   - "account-rail"     -- side rail on /account
+// ID and this slot's unit ID are configured, and never for a user who has
+// paid for full access. Placements avoid the piano/controls so a stray
+// tap can't hit an ad instead of a key.
 import { useEffect, useRef, useState } from "react";
 
 const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
@@ -32,12 +26,9 @@ export function AdSlot({ slot, hidden, className }: AdSlotProps) {
   const pushed = useRef(false);
   const show = !hidden && Boolean(ADSENSE_CLIENT_ID) && Boolean(slotId);
 
-  // Ad-blocker extensions target elements with class="adsbygoogle" and strip
-  // them from the DOM before React hydrates, which desyncs the server- and
-  // client-rendered trees. Gating this on a mounted flag means the ad markup
-  // is absent from both the SSR HTML and the first client render -- it's
-  // only added in a later, post-hydration update, so there's nothing for an
-  // extension to remove before hydration completes.
+  // Ad blockers strip class="adsbygoogle" before hydration, desyncing the
+  // server/client trees -- gating on a mounted flag keeps the ad markup out
+  // of both the SSR HTML and the first client render entirely.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

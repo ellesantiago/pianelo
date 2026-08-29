@@ -175,16 +175,9 @@ export function LetterNotesAdmin({ initial }: LetterNotesAdminProps) {
 }
 
 /**
- * Notebook-style note entry: one row per beat, a left-hand column and a
- * right-hand column -- type a row's notes into whichever column(s) play it,
- * space-separated if that hand plays more than one at once, and leave the
- * other column blank for a one-handed beat. Mirrors LetterNotesViewer's own
- * two-column layout so what's built here is exactly what players will see.
- *
- * Every note needs its own explicit octave (e.g. "C4", not just "C") -- the
- * same name shown on the on-screen piano and used by the keyboard-letter
- * conversion, so what's typed here is unambiguous rather than relying on a
- * separately-chosen default octave.
+ * Notebook-style note entry: one row per beat, left/right-hand columns.
+ * Mirrors LetterNotesViewer's own two-column layout. Every note needs its
+ * explicit octave (e.g. "C4", not just "C") -- no default is assumed.
  */
 function NotesGrid({
   rows,

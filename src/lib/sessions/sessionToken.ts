@@ -1,12 +1,10 @@
 import { randomUUID } from "crypto";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
-// Single-device login enforcement: one active_sessions row per user, holding
-// whichever session_token was issued most recently. Logging in on a new
-// device overwrites the row -- the OLD device's cookie no longer matches on
-// its next request, so it gets signed out there (see src/proxy.ts). This is
-// intentionally simple: no explicit "kick" push to the old device, just a
-// mismatch check on its next request.
+// Single-device login: one active_sessions row per user. A new login
+// overwrites it, so the old device's cookie mismatches on its next
+// request and gets signed out there (see src/proxy.ts) -- no explicit
+// "kick" push, just a mismatch check.
 export const SESSION_COOKIE = "pianelo_session_token";
 
 /** Issues a new session token for a user and records it as their one active session. */

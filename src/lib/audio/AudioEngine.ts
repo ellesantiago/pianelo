@@ -1,12 +1,8 @@
-// Dedicated Web Audio API abstraction. All audio behavior lives here --
-// piano UI components call these methods and never touch
-// AudioContext/oscillators/gain nodes directly.
+// Dedicated Web Audio API abstraction -- piano UI components call these
+// methods and never touch AudioContext/oscillators/gain nodes directly.
 //
-// NOTE: this uses a synthesized placeholder tone, not a licensed piano
-// sample. It exists so the instrument is fully playable end-to-end during
-// development. Before launch this should be swapped for a properly licensed
-// piano sample set (e.g. sample playback via AudioBufferSourceNode instead
-// of the oscillators below).
+// Uses a synthesized placeholder tone, not a licensed piano sample; swap
+// for a licensed sample set (AudioBufferSourceNode) before launch.
 
 import { noteToFrequency } from "./noteFrequency";
 
@@ -18,30 +14,20 @@ interface Voice {
 }
 
 const ATTACK_SECONDS = 0.008;
-// Exponential approach from the attack peak down to SUSTAIN_LEVEL, replacing
-// a fixed-length linear ramp -- a linear gain ramp is perceived as an
-// unnatural decay shape since loudness is roughly logarithmic.
+// Exponential decay (loudness is roughly logarithmic) rather than a linear ramp.
 const DECAY_TIME_CONSTANT = 0.12;
 const SUSTAIN_LEVEL = 0.35;
-// A real piano string has no flat "sustain" stage -- it keeps decaying the
-// entire time a key is held, just slowly. This continues the fade toward
-// silence long after the initial decay settles, instead of holding flat.
+// A held piano string keeps decaying slowly rather than holding flat.
 const SUSTAIN_DECAY_START_SECONDS = 0.5;
 const SUSTAIN_DECAY_TIME_CONSTANT = 4;
-// Exponential release curve (~6 time constants to near-silence) instead of a
-// fixed 0.35s linear ramp to zero.
 const RELEASE_TIME_CONSTANT = 0.12;
-// Still fast enough not to smear repeated/trilled notes, but smoother than a
-// hard 20ms linear cutoff, which reads as an abrupt, resonance-less chop.
+// Fast enough to not smear retriggered/trilled notes, smoother than a hard cutoff.
 const RETRIGGER_RELEASE_TIME_CONSTANT = 0.02;
 const RELEASE_STOP_TIME_CONSTANTS = 6;
 
-// Slight stretch of the upper partials, like a real piano string's
-// inharmonicity, instead of an exact (and therefore synthetic-sounding)
-// harmonic stack.
+// Stretches the upper partials slightly, like a real string's inharmonicity.
 const INHARMONICITY = 0.0004;
-// Subtle unison detuning on the fundamental, like a piano's multiple strings
-// per note beating gently against each other.
+// Subtle unison detune, like a piano's multiple strings per note beating together.
 const DETUNE_CENTS = 4;
 
 const PARTIALS: { harmonic: number; gain: number }[] = [
@@ -64,12 +50,8 @@ export class AudioEngine {
   private volume = 0.8;
   private sustainOn = false;
 
-  /**
-   * Optionally inject a pre-built context (e.g. an OfflineAudioContext for
-   * rendering a recording to a buffer for export) instead of lazily creating
-   * a live AudioContext. Every existing call site passes no options, so
-   * ensureContext()'s lazy-creation branch below is unaffected.
-   */
+  /** Optionally inject a pre-built context (e.g. OfflineAudioContext for
+   * export) instead of lazily creating a live AudioContext. */
   constructor(options?: { context?: BaseAudioContext }) {
     if (options?.context) {
       this.ctx = options.context;
@@ -116,7 +98,6 @@ export class AudioEngine {
   playNote(note: string, atTime?: number): void {
     const { ctx, masterGain } = this.ensureContext();
 
-    // Re-triggering an already-sounding note: stop the old voice first.
     if (this.voices.has(note)) {
       this.stopVoice(note, true, atTime);
     }
@@ -124,9 +105,7 @@ export class AudioEngine {
     const freq = noteToFrequency(note);
     const now = atTime ?? ctx.currentTime;
 
-    // Starts bright (the hammer strike) and settles into a warmer tone,
-    // instead of the full harmonic stack ringing at constant brightness for
-    // the note's entire duration.
+    // Starts bright (hammer strike) and settles into a warmer tone.
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.Q.value = 0.7;
@@ -146,9 +125,7 @@ export class AudioEngine {
     filter.connect(gain);
     gain.connect(masterGain);
 
-    // A small harmonic series with slight inharmonicity, rather than a bare
-    // oscillator or two -- a real piano's tone is a dense, decaying stack of
-    // partials, not one or two clean tones.
+    // A small harmonic series with slight inharmonicity, not a bare tone.
     const oscillators: OscillatorNode[] = [];
     for (const partial of PARTIALS) {
       const centerFreq = partialFrequency(freq, partial.harmonic);
@@ -210,11 +187,7 @@ export class AudioEngine {
     }
   }
 
-  /**
-   * Sustain affects real audio behavior, independent of the piano UI's
-   * visual key state: releasing a key while sustain is on keeps the note
-   * sounding until sustain itself is turned off.
-   */
+  /** Releasing a key while sustain is on keeps it sounding until sustain turns off. */
   setSustain(enabled: boolean): void {
     this.sustainOn = enabled;
     if (!enabled) {

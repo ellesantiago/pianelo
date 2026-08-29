@@ -1,9 +1,7 @@
-// Server-only PayPal client for the full_access product via the Orders v2
-// workflow: our server creates the order, the browser's PayPal Buttons
-// (src/components/paywall/PayPalButton.tsx) get the buyer's approval, and
-// our server captures the payment directly against PayPal's API -- unlike
-// PayMongo's QRPH flow, this capture call is itself the authoritative,
-// synchronous confirmation (no webhook needed).
+// Server-only PayPal client for full_access via the Orders v2 workflow:
+// we create the order, PayPalButton gets the buyer's approval, and we
+// capture directly against PayPal's API -- that capture call is itself
+// the authoritative confirmation (no webhook needed).
 
 function paypalApiBase(): string {
   return process.env.PAYPAL_ENV === "live"

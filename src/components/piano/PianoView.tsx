@@ -87,13 +87,10 @@ export function PianoView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [octave]);
 
-  // Fullscreen is mobile-only (see the button's `sm:hidden`), so lock
-  // landscape orientation the moment fullscreen actually engages -- most
-  // browsers only allow an orientation lock while the document is
-  // fullscreen. Not supported on iOS Safari; failing silently there just
-  // leaves the device in whatever orientation the user is already holding.
-  // lock/unlock are omitted from TS's ScreenOrientation type despite being
-  // implemented in every Chromium-based browser -- hence the cast.
+  // Lock landscape orientation once fullscreen (mobile-only) engages --
+  // most browsers only allow the lock while fullscreen. Not supported on
+  // iOS Safari (fails silently there). lock/unlock are missing from TS's
+  // ScreenOrientation type despite being implemented everywhere else.
   useEffect(() => {
     const orientation = screen.orientation as ScreenOrientation & {
       lock?: (orientation: string) => Promise<void>;
@@ -125,15 +122,10 @@ export function PianoView({
     <div
       ref={containerRef}
       className={`${
-        // `left-1/2 -translate-x-1/2` centers this element on the viewport
-        // (its parent, `main`, is itself centered via `mx-auto`) regardless
-        // of how wide it actually renders -- unlike the old `-mx-[50vw]`
-        // full-bleed trick, which assumed the box always renders at exactly
-        // `w-screen` and broke once `max-w-[1400px]` capped it below that on
-        // wide viewports, leaving it pinned to the left edge instead of
-        // centered. Fullscreen doesn't need any of this: requestFullscreen()
-        // forces `position: fixed` (via the browser's own :fullscreen UA
-        // styles) and already sizes the box to the viewport.
+        // `left-1/2 -translate-x-1/2` centers regardless of rendered width,
+        // unlike the old `-mx-[50vw]` trick which broke once `max-w-[1400px]`
+        // capped the box below `w-screen`. Fullscreen needs none of this --
+        // requestFullscreen() already sizes/positions it via `:fullscreen`.
         isFullscreen
           ? "fixed inset-0 z-50 h-dvh w-dvw max-w-none"
           : "relative left-1/2 w-screen max-w-[1400px] -translate-x-1/2"
@@ -292,11 +284,8 @@ function PianoKey({ note, label, isBlack, isMapped, isActive, style, onPress, on
   // down further or it overflows the key.
   const labelSizeClass = isBlack ? (label.length > 2 ? "text-[9px] leading-none" : "text-xs") : "text-sm";
 
-  // Only ever emit ONE background-color utility class at a time. Mixing a
-  // base color with a conditional active color relies on Tailwind's
-  // generated stylesheet order to break the tie, which isn't guaranteed --
-  // keeping the classes mutually exclusive is what actually guarantees the
-  // active highlight wins.
+  // Mutually exclusive classes, never a base + conditional override --
+  // Tailwind's stylesheet order isn't guaranteed to break the tie.
   const colorClasses = isActive
     ? isBlack
       ? "bg-sky-500 text-white border-sky-600"

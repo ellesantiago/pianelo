@@ -12,6 +12,11 @@ Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS v4, Supabase
 (Postgres + Auth), PayMongo (one-time payments: card, GCash, Maya) and PayPal
 (one-time payments, international), Google AdSense.
 
+See [SECURITY.md](./SECURITY.md) before touching auth, payments, or RLS
+policies -- it explains why the entitlement/admin gating is structured the
+way it is, and documents a privilege-escalation issue that was found and
+fixed on 2026-08-29.
+
 ## Setup
 
 ```bash

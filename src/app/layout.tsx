@@ -11,6 +11,7 @@ import { AdSlot } from "@/components/ads/AdSlot";
 // the build from depending on network access to Google Fonts at build time.
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.pianelo.online"),
   title: "Pianelo — Play Piano Online",
   description:
     "A clean, simple online piano you play with your computer keyboard, mouse, or touch.",

@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+
+export const metadata: Metadata = {
+  title: "Reset your password — Pianelo",
+  description: "Request a link to reset your Pianelo account password.",
+};
 
 export default function ForgotPasswordPage() {
   return (

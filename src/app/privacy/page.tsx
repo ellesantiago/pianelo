@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { LAST_UPDATED, LEGAL_ENTITY_NAME, REGISTERED_ADDRESS, SUPPORT_EMAIL } from "@/config/legal";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy — Pianelo",
+  description: "How Pianelo collects, uses, and protects your personal data.",
+};
 
 // DRAFT -- needs a lawyer's review, and the config/legal.ts placeholders
 // filled in, before this is relied upon as the live Privacy Policy.

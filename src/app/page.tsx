@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { GatedPiano } from "@/components/piano/GatedPiano";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { LetterNotesSearch } from "@/components/letterNotes/LetterNotesSearch";
+
+export const metadata: Metadata = {
+  title: "Pianelo — Play Piano Online",
+  description:
+    "A clean, simple online piano you play with your computer keyboard, mouse, or touch. Free, forever, no account needed.",
+};
 
 export default async function HomePage() {
   const user = await getCurrentUser();

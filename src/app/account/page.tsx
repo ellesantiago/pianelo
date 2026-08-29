@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { PurchaseButton } from "@/components/paywall/PurchaseButton";
+
+export const metadata: Metadata = {
+  title: "Account — Pianelo",
+  description: "Manage your Pianelo account.",
+};
 
 export default async function AccountPage() {
   const user = await getCurrentUser();

@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { PurchaseButton } from "@/components/paywall/PurchaseButton";
 import { PRODUCTS, formatPeso } from "@/lib/payments/products";
+
+export const metadata: Metadata = {
+  title: "Pricing — Pianelo",
+  description:
+    "The Pianelo piano is free, forever. Unlock letter notes, recording, and an ad-free experience with a single one-time payment.",
+};
 
 export default async function PricingPage() {
   const user = await getCurrentUser();

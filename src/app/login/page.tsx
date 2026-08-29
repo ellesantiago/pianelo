@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthForm } from "@/components/auth/AuthForm";
+
+export const metadata: Metadata = {
+  title: "Log in — Pianelo",
+  description: "Log in to your Pianelo account.",
+};
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { error, reason } = await searchParams;

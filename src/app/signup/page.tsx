@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthForm } from "@/components/auth/AuthForm";
+
+export const metadata: Metadata = {
+  title: "Sign up — Pianelo",
+  description: "Create a free Pianelo account to unlock letter notes, recording, and more.",
+};
 
 export default function SignupPage() {
   return (

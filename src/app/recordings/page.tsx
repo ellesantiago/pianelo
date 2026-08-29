@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { RecordingsList } from "@/components/recording/RecordingsList";
 import { AdSlot } from "@/components/ads/AdSlot";
+
+export const metadata: Metadata = {
+  title: "My Recordings — Pianelo",
+  description: "Recordings saved on this device.",
+};
 
 // Recordings live entirely in this browser's IndexedDB (see
 // lib/recordings/localStore.ts) -- there is no server-side list to gate --

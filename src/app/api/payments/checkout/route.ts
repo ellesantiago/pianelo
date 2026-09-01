@@ -38,16 +38,30 @@ export async function POST(request: Request) {
     });
 
     const service = createSupabaseServiceRoleClient();
-    if (service) {
-      await service.from("purchases").insert({
-        user_id: user.id,
-        product,
-        provider: "paymongo",
-        provider_payment_intent_id: intent.id,
-        status: "pending",
-        amount: priceCentavos / 100,
-        currency: "PHP",
-      });
+    if (!service) {
+      console.error("PayMongo checkout: Supabase service-role client unavailable (check env vars)");
+      return NextResponse.json(
+        { error: "Could not start checkout. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    const { error: insertError } = await service.from("purchases").insert({
+      user_id: user.id,
+      product,
+      provider: "paymongo",
+      provider_payment_intent_id: intent.id,
+      status: "pending",
+      amount: priceCentavos / 100,
+      currency: "PHP",
+    });
+
+    if (insertError) {
+      console.error("PayMongo checkout: failed to insert pending purchase", intent.id, insertError);
+      return NextResponse.json(
+        { error: "Could not start checkout. Please try again." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

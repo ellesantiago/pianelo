@@ -49,9 +49,14 @@ without a registered business.
    response carries a base64 QR image (`next_action.code.image_url`)
    rendered inline for the customer to scan.
 3. **Confirmation:** the modal polls `GET /api/payments/status` every 3s
-   while the QR is showing, but that route only ever reports
-   `hasFullAccess` off a webhook-written `paid` row — polling doesn't
-   itself unlock anything.
+   while the QR is showing. That route reports `hasFullAccess` off a
+   `paid` row — normally webhook-written, but the route also reconciles
+   any of the caller's own still-`pending` PayMongo rows directly against
+   PayMongo's API first (`retrievePaymentIntent`), so a payment PayMongo
+   already confirmed can't get stuck forever if the webhook call itself
+   never lands (wrong secret, missing service-role key, etc.). Either way,
+   polling never unlocks anything on the browser's say-so — only PayMongo's
+   own reported status, webhook or direct, counts.
 4. **`POST /api/payments/webhook`** (`src/app/api/payments/webhook/route.ts`):
    PayMongo calls this directly (no user session) once the QR is
    scanned/paid. Verifies the `Paymongo-Signature` header
@@ -60,7 +65,9 @@ without a registered business.
    compared with `crypto.timingSafeEqual`) before trusting anything in
    the payload. On `payment.paid`/`payment.failed`, updates the purchases
    row matching `provider_payment_intent_id` to `paid`/`failed`.
-   **This is the only thing that ever sets a PayMongo row to `paid`.**
+   **This is the primary path that sets a PayMongo row to `paid`** — the
+   `/api/payments/status` reconciliation above (step 3) is the fallback for
+   when this webhook call itself never arrives.
 
 **Testing locally:** PayMongo's webhook needs a public URL to reach —
 use a tunnel (e.g. `ngrok`) and register it in the PayMongo dashboard, per

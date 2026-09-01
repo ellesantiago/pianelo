@@ -31,16 +31,30 @@ export async function POST() {
     });
 
     const service = createSupabaseServiceRoleClient();
-    if (service) {
-      await service.from("purchases").insert({
-        user_id: user.id,
-        product: "full_access",
-        provider: "paypal",
-        provider_payment_intent_id: order.id,
-        status: "pending",
-        amount: amountUsd,
-        currency: "USD",
-      });
+    if (!service) {
+      console.error("PayPal create-order: Supabase service-role client unavailable (check env vars)");
+      return NextResponse.json(
+        { error: "Could not start checkout. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    const { error: insertError } = await service.from("purchases").insert({
+      user_id: user.id,
+      product: "full_access",
+      provider: "paypal",
+      provider_payment_intent_id: order.id,
+      status: "pending",
+      amount: amountUsd,
+      currency: "USD",
+    });
+
+    if (insertError) {
+      console.error("PayPal create-order: failed to insert pending purchase", order.id, insertError);
+      return NextResponse.json(
+        { error: "Could not start checkout. Please try again." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ orderId: order.id });
